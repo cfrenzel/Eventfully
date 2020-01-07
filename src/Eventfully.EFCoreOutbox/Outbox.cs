@@ -60,6 +60,11 @@ namespace Eventfully.EFCoreOutbox
                 _beginConsumingTransient(settings.MaxConcurrency);
         }
 
+        /// <summary>
+        /// Get outbox messages for relay/dispatch
+        /// </summary>
+        /// <param name="relayCallback"></param>
+        /// <returns></returns>
         public async Task<OutboxDispatchResult> Relay(Func<string, byte[], MessageMetaData, string, Task> relayCallback)
         {
             try
