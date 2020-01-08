@@ -17,8 +17,8 @@ namespace Eventfully
         private static ConcurrentDictionary<Type, MessageTypeProperties> _messageTypePropMap = new ConcurrentDictionary<Type, MessageTypeProperties>();
         private static ConcurrentDictionary<Type, SagaProperties> _sagaTypePropMap = new ConcurrentDictionary<Type, SagaProperties>();
 
-        private static readonly Dictionary<string, Endpoint> _nameEndpointMap = new Dictionary<string, Endpoint>();
-        private static readonly Dictionary<string, Endpoint> _messageTypeIdentifierRouteToEndpointMap = new Dictionary<string, Endpoint>();
+        private static readonly Dictionary<string, IEndpoint> _nameEndpointMap = new Dictionary<string, IEndpoint>();
+        private static readonly Dictionary<string, IEndpoint> _messageTypeIdentifierRouteToEndpointMap = new Dictionary<string, IEndpoint>();
 
         private static Type _extractorInterface = typeof(IMessageExtractor);
         
@@ -80,22 +80,22 @@ namespace Eventfully
 
 
 
-        public static IEnumerable<Endpoint> FindAllEndpoints()
+        public static IEnumerable<IEndpoint> FindAllEndpoints()
         {
             return _nameEndpointMap.Values;
         }
-        public static Endpoint FindEndpointByName(string name)
+        public static IEndpoint FindEndpointByName(string name)
         {
-            Endpoint endpoint = null;
+            IEndpoint endpoint = null;
             if (_nameEndpointMap.TryGetValue(name, out endpoint))
                 return endpoint;
 
             throw new EndpointNotFoundException(name, null);
         }
 
-        public static Endpoint FindEndpoint(string messageTypeIdenfifier)
+        public static IEndpoint FindEndpoint(string messageTypeIdenfifier)
         {
-            Endpoint endpoint = null;
+            IEndpoint endpoint = null;
             if (_messageTypeIdentifierRouteToEndpointMap.TryGetValue(messageTypeIdenfifier, out endpoint))
                 return endpoint;
 
@@ -103,9 +103,9 @@ namespace Eventfully
         }
 
 
-        public static Endpoint FindEndpoint(IIntegrationMessage message)
+        public static IEndpoint FindEndpoint(IIntegrationMessage message)
         {
-            Endpoint endpoint = null;
+            IEndpoint endpoint = null;
             if (_messageTypeIdentifierRouteToEndpointMap.TryGetValue(message.MessageType, out endpoint))
                 return endpoint;
             else if (message is IIntegrationEvent)
@@ -120,32 +120,32 @@ namespace Eventfully
             throw new EndpointNotFoundException(message.MessageType);
         }
 
-        public static void AddEndpoint(string name, Endpoint endpoint)
+        public static void AddEndpoint(string name, IEndpoint endpoint)
         {
             _nameEndpointMap.Add(endpoint.Name, endpoint);
         }
 
-        public static void AddEndpointRoute(string messageTypeIdentifier, Endpoint endpoint)
+        public static void AddEndpointRoute(string messageTypeIdentifier, IEndpoint endpoint)
         {
             _messageTypeIdentifierRouteToEndpointMap.Add(messageTypeIdentifier, endpoint);
         }
 
 
-        private static Endpoint _defaultPublishToEndpoint = null;
-        public static Endpoint DefaultPublishToEndpoint { get => _defaultPublishToEndpoint; }
+        private static IEndpoint _defaultPublishToEndpoint = null;
+        public static IEndpoint DefaultPublishToEndpoint { get => _defaultPublishToEndpoint; }
 
-        public static void SetDefaultPublishToEndpoint(Endpoint endpoint)
+        public static void SetDefaultPublishToEndpoint(IEndpoint endpoint)
         {
             _defaultPublishToEndpoint = endpoint;
         }
 
-        private static Endpoint _defaultReplyToEndpoint = null;
-        public static Endpoint DefaultReplyToEndpoint { get => _defaultReplyToEndpoint; }
-        public static void SetDefaultReplyToEndpoint(Endpoint endpoint)
+        private static IEndpoint _defaultReplyToEndpoint = null;
+        public static IEndpoint DefaultReplyToEndpoint { get => _defaultReplyToEndpoint; }
+        public static void SetDefaultReplyToEndpoint(IEndpoint endpoint)
         {
             _defaultReplyToEndpoint = endpoint;
         }
-        public static Endpoint GetDefaultReplyToEndpoint()
+        public static IEndpoint GetDefaultReplyToEndpoint()
         {
             return _defaultReplyToEndpoint;
         }
