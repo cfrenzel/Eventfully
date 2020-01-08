@@ -61,6 +61,7 @@ namespace Eventfully.EFCoreOutbox.IntegrationTests
                //{
                //}
             };
+            Logging.LoggerFactory = _serviceProvider.GetRequiredService<ILoggerFactory>();
 
         }
 

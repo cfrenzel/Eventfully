@@ -26,9 +26,9 @@ namespace Eventfully.Filters
     {
         public FilterDirection Direction { get; set; }
         public TransportMessage TransportMessage { get; set; }
-        public Endpoint Endpoint { get; set; }
+        public IEndpoint Endpoint { get; set; }
 
-        public TransportMessageFilterContext(TransportMessage message, Endpoint endpoint, FilterDirection direction)
+        public TransportMessageFilterContext(TransportMessage message, IEndpoint endpoint, FilterDirection direction)
         {
             TransportMessage = message;
             Endpoint = endpoint;

@@ -10,11 +10,11 @@ namespace Eventfully.Transports
     {
         bool SupportsDelayedDispatch { get; }
 
-        Task Start(Endpoint endpoint, CancellationToken cancellationToken);
+        Task Start(IEndpoint endpoint, CancellationToken cancellationToken);
 
-        Task Dispatch(string messageTypeIdenfifier, byte[] message, Endpoint endpoint, MessageMetaData metaData = null);
+        Task Dispatch(string messageTypeIdenfifier, byte[] message, IEndpoint endpoint, MessageMetaData metaData = null);
 
-        void SetReplyToForCommand(Endpoint endpoint, IIntegrationCommand command, MessageMetaData meta);
+        void SetReplyToForCommand(IEndpoint endpoint, IIntegrationCommand command, MessageMetaData meta);
 
 
     }

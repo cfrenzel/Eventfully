@@ -17,7 +17,7 @@ namespace Eventfully.Transports
         /// <param name="endpoint"></param>
         /// <param name="cancellationToken"></param>
         /// <returns></returns>
-        public abstract Task Start(Endpoint endpoint, CancellationToken cancellationToken);
+        public abstract Task Start(IEndpoint endpoint, CancellationToken cancellationToken);
 
         /// <summary>
         /// Dispatch a pre-serialized message to the supplied endpoint
@@ -27,7 +27,7 @@ namespace Eventfully.Transports
         /// <param name="endpoint"></param>
         /// <param name="metaData"></param>
         /// <returns></returns>
-        public abstract Task Dispatch(string messageTypeIdentifier, byte[] message, Endpoint endpoint, MessageMetaData metaData = null);
+        public abstract Task Dispatch(string messageTypeIdentifier, byte[] message, IEndpoint endpoint, MessageMetaData metaData = null);
        
         /// <summary>
         /// Use the ReplyTo information in the meata data
@@ -35,7 +35,7 @@ namespace Eventfully.Transports
         /// </summary>
         /// <param name="commandContext"></param>
         /// <returns></returns>
-        public abstract Endpoint FindEndpointForReply(MessageContext commandContext);
+        public abstract IEndpoint FindEndpointForReply(MessageContext commandContext);
 
         /// <summary>
         /// Populate the ReplyTo meta data for a command using
@@ -44,7 +44,7 @@ namespace Eventfully.Transports
         /// <param name="endpoint"></param>
         /// <param name="command"></param>
         /// <param name="meta"></param>
-        public abstract void SetReplyToForCommand(Endpoint endpoint, IIntegrationCommand command, MessageMetaData meta);
+        public abstract void SetReplyToForCommand(IEndpoint endpoint, IIntegrationCommand command, MessageMetaData meta);
 
     }
 }

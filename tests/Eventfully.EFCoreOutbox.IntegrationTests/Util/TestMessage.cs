@@ -6,7 +6,7 @@ namespace Eventfully.EFCoreOutbox.IntegrationTests
 {
     public class TestMessage : IntegrationCommand
     {
-        public override string MessageType => "Test.MesageType";
+        public override string MessageType => "Test.MessageType";
    
         public Guid Id { get; set; }
         public string Name { get; set; }

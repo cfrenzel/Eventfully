@@ -349,23 +349,3 @@ namespace Eventfully.EFCoreOutbox
         }
     }
 }
-
-
-//Parallel.For(ForEach(_transientDispatchQueue.GetConsumingPartitioner(),
-//    new ParallelOptions { MaxDegreeOfParallelism = 3 },
-//    async outboxMessage =>
-//    {
-//        if (outboxMessage.SkipTransientDispatch || outboxMessage.IsExpired(DateTime.UtcNow))
-//            return;
-//        try
-//        {
-//            var metaData = outboxMessage.MessageData.MetaData != null ? JsonConvert.DeserializeObject<MessageMetaData>(outboxMessage.MessageData.MetaData) : null;
-//            await MessagingService.Instance.DispatchRaw(outboxMessage.Type, outboxMessage.MessageData.Data, metaData, outboxMessage.Endpoint);
-//            MarkAsComplete(outboxMessage);
-//        }
-//        catch (Exception ex)
-//        {
-//            MarkAsFailure(outboxMessage);
-//            _log.LogError(ex, "Error dispatching Outbox transient Message Id: {id} Type: {type}.  The event will be retried by the Outbox", outboxMessage.Id, outboxMessage.Type);
-//        }
-//    });
