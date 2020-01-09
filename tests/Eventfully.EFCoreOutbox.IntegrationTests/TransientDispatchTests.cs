@@ -20,7 +20,7 @@ namespace Eventfully.EFCoreOutbox.IntegrationTests
     public class TransientDispatchTests : IntegrationTestBase, IClassFixture<TransientDispatchTests.Fixture>
     {
         private Fixture _fixture;
-        private int _delay = 400;
+        private int _delayForTransientProcessor = 400;
         public TransientDispatchTests(Fixture fixture)
         {
             this._fixture = fixture;
@@ -80,7 +80,7 @@ namespace Eventfully.EFCoreOutbox.IntegrationTests
                 await outboxSession.Dispatch(_fixture.Message.MessageType, _fixture.MessageBytes, null, endpoint, new OutboxDispatchOptions());
                 A.CallTo(() => endpoint.Dispatch(_fixture.Message.MessageType, _fixture.MessageBytes, null)).MustNotHaveHappened();
                 await db.SaveChangesAsync();
-                await Task.Delay(_delay);
+                await Task.Delay(_delayForTransientProcessor);
                 A.CallTo(() => endpoint.Dispatch(_fixture.Message.MessageType, _fixture.MessageBytes, null)).MustHaveHappenedOnceExactly();
             }
 
@@ -138,7 +138,7 @@ namespace Eventfully.EFCoreOutbox.IntegrationTests
                 
                 A.CallTo(() => endpoint.Dispatch(_fixture.Message.MessageType, _fixture.MessageBytes, null)).MustNotHaveHappened();
                 await db.SaveChangesAsync();
-                await Task.Delay(_delay);
+                await Task.Delay(_delayForTransientProcessor);
                 A.CallTo(() => endpoint.Dispatch(_fixture.Message.MessageType, _fixture.MessageBytes, null)).MustHaveHappenedOnceExactly();
             }
 
@@ -169,7 +169,7 @@ namespace Eventfully.EFCoreOutbox.IntegrationTests
                     ExpiresAtUtc = DateTime.UtcNow
                 });
                 await db.SaveChangesAsync();
-                await Task.Delay(_delay);
+                await Task.Delay(_delayForTransientProcessor);
             }
 
             using (var scope = NewScope())
@@ -183,8 +183,12 @@ namespace Eventfully.EFCoreOutbox.IntegrationTests
         }
 
 
+        /// <summary>
+        /// We want the outbox to handle the delay of the transport can't
+        /// </summary>
+        /// <returns></returns>
         [Fact]
-        public async Task Should_abandon_delayed_transient_when_transport_does_not_support_delay()
+        public async Task Should_abandon_transient_with_delay_when_endpoint_does_not_support_delay()
         {
             /*
               public class TestTransport : Transport
@@ -200,12 +204,17 @@ namespace Eventfully.EFCoreOutbox.IntegrationTests
                 );
                 _fixture.MessagingService.AddEndpoint(endpoint);
 
-                await outboxSession.Dispatch(_fixture.Message.MessageType, _fixture.MessageBytes, null, endpoint, new OutboxDispatchOptions()
+                ///the configuration gets a little funky here because in normal use the 
+                ///end user uses metaData to configure delay while behind the scenes meta is
+                ///used to set the the OutboxDispatchOptions, this test should probably be done
+                ///on the MessagingService
+                MessageMetaData meta = new MessageMetaData(TimeSpan.FromMinutes(1));
+                await outboxSession.Dispatch(_fixture.Message.MessageType, _fixture.MessageBytes, meta, endpoint, new OutboxDispatchOptions()
                 {
-                    Delay = TimeSpan.FromMinutes(1)
+                    Delay = meta.DispatchDelay
                 });
                 await db.SaveChangesAsync();
-                await Task.Delay(_delay);
+                await Task.Delay(_delayForTransientProcessor);
                 A.CallTo(() => endpoint.Dispatch(_fixture.Message.MessageType, _fixture.MessageBytes, null)).MustNotHaveHappened();
             }
 

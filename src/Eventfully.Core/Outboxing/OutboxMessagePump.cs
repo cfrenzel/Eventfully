@@ -56,7 +56,7 @@ namespace Eventfully.Outboxing
                 //stop and restart after we process
                 _dispatchTimer.Change(Timeout.Infinite, Timeout.Infinite);
               
-                var res = await _messagingService.DispatchOutbox();
+                var res = await _messagingService.RelayOutbox();
                 if (res.MessageCount >= res.MessageCount)
                     dispatchDelay = TimeSpan.FromSeconds(0);
 

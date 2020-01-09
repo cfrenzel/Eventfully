@@ -63,7 +63,7 @@ namespace Eventfully.EFCoreOutbox
 
             options = options ?? new OutboxDispatchOptions();
             double delayInSeconds = 0; //send immediately
-            bool skipTransient = _outbox.Settings.DisableTransientDispatch;
+            bool skipTransient = _outbox.DisableTransientDispatch;
 
             if (!skipTransient)
                 skipTransient = options.SkipTransientDispatch;//check at the message level
