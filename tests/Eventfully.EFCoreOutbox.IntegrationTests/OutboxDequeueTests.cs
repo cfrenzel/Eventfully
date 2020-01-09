@@ -4,19 +4,18 @@ using System.Text;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 using Shouldly;
-using Eventfully.Outboxing;
 using Newtonsoft.Json;
 using System.Threading.Tasks;
 using System.Linq;
 using Microsoft.EntityFrameworkCore;
 using Eventfully.Handlers;
 using FakeItEasy;
-using Eventfully.Transports;
-using Eventfully.Transports.Testing;
 
 namespace Eventfully.EFCoreOutbox.IntegrationTests
 {
     using static IntegrationTestFixture;
+    
+    [Collection("Sequential")]
     public class OutboxDequeueTests : IntegrationTestBase, IClassFixture<OutboxDequeueTests.Fixture>
     {
         private Fixture _fixture;
@@ -40,18 +39,6 @@ namespace Eventfully.EFCoreOutbox.IntegrationTests
    
             public Fixture()
             {
-
-                this.Outbox = new Outbox<ApplicationDbContext>(new OutboxSettings()
-                {
-                    BatchSize = 5,
-                    MaxConcurrency = 1,
-                    MaxTries = 10,
-                    SqlConnectionString = ConnectionString,
-                    DisableTransientDispatch = true,
-                });
-
-                var handlerFactory = A.Fake<IMessageHandlerFactory>();
-                
                 this.Message = new TestMessage()
                 {
                     Id = Guid.NewGuid(),
@@ -62,32 +49,17 @@ namespace Eventfully.EFCoreOutbox.IntegrationTests
 
                 string messageBody = JsonConvert.SerializeObject(this.Message);
                 this.MessageBytes = Encoding.UTF8.GetBytes(messageBody);
-            }
 
-            public async Task CreateOutboxMessage(string endpointName, string uniqueId, OutboxMessageStatus status, DateTime? priorityDateUtc = null, DateTime? expiresAtUtc = null)
-            {
-                using (var scope = NewScope())
+                this.Outbox = new Outbox<ApplicationDbContext>(new OutboxSettings()
                 {
-                    var messageMetaData = new MessageMetaData(messageId: uniqueId);
-                    var serializedMessageMetaData = messageMetaData != null ? JsonConvert.SerializeObject(messageMetaData) : null;
+                    BatchSize = 5,
+                    MaxConcurrency = 1,
+                    MaxTries = 10,
+                    SqlConnectionString = ConnectionString,
+                    DisableTransientDispatch = true,
+                });
 
-                    OutboxMessage om = new OutboxMessage(
-                        this.Message.MessageType,
-                        this.MessageBytes,
-                        serializedMessageMetaData,
-                        priorityDateUtc.HasValue ? priorityDateUtc.Value : DateTime.UtcNow,
-                        endpointName,
-                        true,
-                        expiresAtUtc
-                    )
-                    {
-                        Status = (int)status,
-                    };
-
-                    var db = scope.ServiceProvider.GetService<ApplicationDbContext>();
-                    db.Set<OutboxMessage>().Add(om);
-                    await db.SaveChangesAsync();
-                }
+                MessagingService.Instance.Outbox = this.Outbox;
             }
         }
 
@@ -98,11 +70,11 @@ namespace Eventfully.EFCoreOutbox.IntegrationTests
         {
             string endpointName = "OutboxDequeueTests1.2";
 
-            await _fixture.CreateOutboxMessage(endpointName, "ready_1", OutboxMessageStatus.Ready);
-            await _fixture.CreateOutboxMessage(endpointName, "ready_2", OutboxMessageStatus.Ready);
-            await _fixture.CreateOutboxMessage(endpointName, "inprogress_3", OutboxMessageStatus.InProgress);
-            await _fixture.CreateOutboxMessage(endpointName, "processed_4", OutboxMessageStatus.Processed);
-            await _fixture.CreateOutboxMessage(endpointName, "failed_5", OutboxMessageStatus.Failed);
+            await IntegrationTestFixture.CreateOutboxMessage(endpointName, "ready_1", OutboxMessageStatus.Ready);
+            await IntegrationTestFixture.CreateOutboxMessage(endpointName, "ready_2", OutboxMessageStatus.Ready);
+            await IntegrationTestFixture.CreateOutboxMessage(endpointName, "inprogress_3", OutboxMessageStatus.InProgress);
+            await IntegrationTestFixture.CreateOutboxMessage(endpointName, "processed_4", OutboxMessageStatus.Processed);
+            await IntegrationTestFixture.CreateOutboxMessage(endpointName, "failed_5", OutboxMessageStatus.Failed);
 
             var callback = A.Fake<Func<string, byte[], MessageMetaData, string, Task>>();
             await _fixture.Outbox.Relay(callback);
@@ -148,12 +120,12 @@ namespace Eventfully.EFCoreOutbox.IntegrationTests
         {
             string endpointName = "OutboxDequeueTests1.3";
 
-            await _fixture.CreateOutboxMessage(endpointName, "ready_1", OutboxMessageStatus.Ready);
-            await _fixture.CreateOutboxMessage(endpointName, "ready_2", OutboxMessageStatus.Ready);
-            await _fixture.CreateOutboxMessage(endpointName, "ready_3", OutboxMessageStatus.Ready);
-            await _fixture.CreateOutboxMessage(endpointName, "ready_4", OutboxMessageStatus.Ready);
-            await _fixture.CreateOutboxMessage(endpointName, "ready_5", OutboxMessageStatus.Ready);
-            await _fixture.CreateOutboxMessage(endpointName, "ready_6", OutboxMessageStatus.Ready);
+            await IntegrationTestFixture.CreateOutboxMessage(endpointName, "ready_1", OutboxMessageStatus.Ready);
+            await IntegrationTestFixture.CreateOutboxMessage(endpointName, "ready_2", OutboxMessageStatus.Ready);
+            await IntegrationTestFixture.CreateOutboxMessage(endpointName, "ready_3", OutboxMessageStatus.Ready);
+            await IntegrationTestFixture.CreateOutboxMessage(endpointName, "ready_4", OutboxMessageStatus.Ready);
+            await IntegrationTestFixture.CreateOutboxMessage(endpointName, "ready_5", OutboxMessageStatus.Ready);
+            await IntegrationTestFixture.CreateOutboxMessage(endpointName, "ready_6", OutboxMessageStatus.Ready);
 
             var callback = A.Fake<Func<string, byte[], MessageMetaData, string, Task>>();
             await _fixture.Outbox.Relay(callback);
@@ -181,11 +153,11 @@ namespace Eventfully.EFCoreOutbox.IntegrationTests
 
             var futureDate = DateTime.UtcNow.AddMinutes(2);
 
-            await _fixture.CreateOutboxMessage(endpointName, "ready_1", OutboxMessageStatus.Ready);
-            await _fixture.CreateOutboxMessage(endpointName, "ready_2", OutboxMessageStatus.Ready);
-            await _fixture.CreateOutboxMessage(endpointName, "ready_4", OutboxMessageStatus.Ready, futureDate);
-            await _fixture.CreateOutboxMessage(endpointName, "ready_5", OutboxMessageStatus.Ready, futureDate);
-            await _fixture.CreateOutboxMessage(endpointName, "ready_6", OutboxMessageStatus.Ready, futureDate);
+            await IntegrationTestFixture.CreateOutboxMessage(endpointName, "ready_1", OutboxMessageStatus.Ready);
+            await IntegrationTestFixture.CreateOutboxMessage(endpointName, "ready_2", OutboxMessageStatus.Ready);
+            await IntegrationTestFixture.CreateOutboxMessage(endpointName, "ready_4", OutboxMessageStatus.Ready, futureDate);
+            await IntegrationTestFixture.CreateOutboxMessage(endpointName, "ready_5", OutboxMessageStatus.Ready, futureDate);
+            await IntegrationTestFixture.CreateOutboxMessage(endpointName, "ready_6", OutboxMessageStatus.Ready, futureDate);
 
             var callback = A.Fake<Func<string, byte[], MessageMetaData, string, Task>>();
             await _fixture.Outbox.Relay(callback);

@@ -11,6 +11,9 @@ using FakeItEasy;
 using Microsoft.EntityFrameworkCore;
 using System.Reflection;
 using Microsoft.EntityFrameworkCore.Design;
+using Eventfully.Handlers;
+using Newtonsoft.Json;
+using System.Text;
 
 namespace Eventfully.EFCoreOutbox.IntegrationTests
 {
@@ -21,7 +24,9 @@ namespace Eventfully.EFCoreOutbox.IntegrationTests
         protected static IConfigurationRoot _config;
         protected static IServiceProvider _serviceProvider;
         protected static readonly Checkpoint _checkpoint;
-        
+        public static TestMessage Message;
+        public static byte[] MessageBytes;
+
         static IntegrationTestFixture()
         {
             _config = new ConfigurationBuilder()
@@ -38,7 +43,7 @@ namespace Eventfully.EFCoreOutbox.IntegrationTests
             services.AddLogging(builder => {
                 builder.AddConfiguration(_config.GetSection("Logging"));
                 //builder.AddConsole();
-                //builder.AddDebug();
+                builder.AddDebug();
             });
 
             services.AddDbContext<ApplicationDbContext>(options =>
@@ -47,21 +52,42 @@ namespace Eventfully.EFCoreOutbox.IntegrationTests
             ));
 
             //services.AddMediatR(typeof(Program).GetTypeInfo().Assembly);
-
             _serviceProvider = services.BuildServiceProvider();
-            //_log = _serviceProvider.GetService<ILogger<Program>>();
-
+       
             _checkpoint = new Checkpoint()
             {
                 TablesToIgnore = new[]
                 {
                     "__EFMigrationsHistory",
                 },
-               //SchemasToExclude = new[]
-               //{
-               //}
+               //SchemasToExclude = new[]{}
             };
+
+            ///Setup internal logging for eventfully
             Logging.LoggerFactory = _serviceProvider.GetRequiredService<ILoggerFactory>();
+            
+            var outbox = new Outbox<ApplicationDbContext>(new OutboxSettings()
+            {
+                BatchSize = 10,
+                MaxConcurrency = 1,
+                MaxTries = 10,
+                SqlConnectionString = ConnectionString,
+                DisableTransientDispatch = true,
+            });
+
+            var handlerFactory = A.Fake<IMessageHandlerFactory>();
+            var messagingService = new MessagingService(null, outbox, handlerFactory);
+
+            Message = new TestMessage()
+            {
+                Id = Guid.NewGuid(),
+                Description = "Test Message Text",
+                Name = "Test Message Name",
+                MessageDate = DateTime.UtcNow,
+            };
+
+            string messageBody = JsonConvert.SerializeObject(Message);
+            MessageBytes = Encoding.UTF8.GetBytes(messageBody);
 
         }
 
@@ -71,62 +97,34 @@ namespace Eventfully.EFCoreOutbox.IntegrationTests
 
         public static IServiceScope NewScope() => _serviceProvider.CreateScope();
 
-                //public static async Task ExecuteScopeAsync(Func<IServiceProvider, Task> action)
-                //{
-                //    using (var scope = _serviceProvider.CreateScope())
-                //    {
-                //        var dbContext = scope.ServiceProvider.GetService<ApplicationDbContext>();
+        public static async Task<OutboxMessage> CreateOutboxMessage(string endpointName, string uniqueId, OutboxMessageStatus status, DateTime? priorityDateUtc = null, DateTime? expiresAtUtc = null)
+        {
+            using (var scope = NewScope())
+            {
+                var messageMetaData = new MessageMetaData(messageId: uniqueId);
+                var serializedMessageMetaData = messageMetaData != null ? JsonConvert.SerializeObject(messageMetaData) : null;
 
-                //        try
-                //        {
-                //            await dbContext.BeginTransactionAsync().ConfigureAwait(false);
+                OutboxMessage om = new OutboxMessage(
+                    Message.MessageType,
+                    MessageBytes,
+                    serializedMessageMetaData,
+                    priorityDateUtc.HasValue ? priorityDateUtc.Value : DateTime.UtcNow,
+                    endpointName,
+                    true,
+                    expiresAtUtc
+                )
+                {
+                    Status = (int)status,
+                };
 
-                //            await action(scope.ServiceProvider).ConfigureAwait(false);
+                var db = scope.ServiceProvider.GetService<ApplicationDbContext>();
+                db.Set<OutboxMessage>().Add(om);
+                await db.SaveChangesAsync();
+                return om;
+            }
+        }
 
-                //            await dbContext.CommitTransactionAsync().ConfigureAwait(false);
-                //        }
-                //        catch (Exception)
-                //        {
-                //            dbContext.RollbackTransaction();
-                //            throw;
-                //        }
-                //    }
-                //}
-
-                //public static async Task<T> ExecuteScopeAsync<T>(Func<IServiceProvider, Task<T>> action)
-                //{
-                //    using (var scope = _serviceProvider.CreateScope())
-                //    {
-                //        var db = scope.ServiceProvider.GetService<ApplicationDbContext>();
-
-                //        try
-                //        {
-                //            //await dbContext.BeginTransactionAsync().ConfigureAwait(false);
-
-                //           var result = await action(scope.ServiceProvider).ConfigureAwait(false);
-
-                //            await db.SaveChangesAsync();
-                //            //await dbContext.CommitTransactionAsync().ConfigureAwait(false);
-
-                //            return result;
-                //        }
-                //        catch (Exception)
-                //        {
-
-                //            //db.RollbackTransaction();
-                //            throw;
-                //        }
-                //    }
-                //}
-
-
-
-                //private static int CourseNumber = 1;
-
-                //public static int NextCourseNumber() => Interlocked.Increment(ref CourseNumber);
-
-
-                public ApplicationDbContext CreateDbContext(string[] args)
+        public ApplicationDbContext CreateDbContext(string[] args)
             {
                 var builder = new ConfigurationBuilder()
                     .SetBasePath(Directory.GetCurrentDirectory())

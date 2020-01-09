@@ -29,10 +29,11 @@ namespace Eventfully
         
         private readonly IMessageDispatcher _messageHandlerDispatcher;
         private readonly OutboxMessagePump _outboxMessagePump;
-        private readonly IOutbox _outbox;
 
         private int _maxImmediateRetryCount = 1;// deal with transient errors before doing a more sophisticated retry with backoff
         private readonly AsyncRetryPolicy _immediateHandleRetryPolicy;
+
+        public IOutbox Outbox { get; set; }
 
         public MessagingService(IOutbox outbox, IMessageHandlerFactory handlerFactory) 
             :this(null, outbox, handlerFactory)
@@ -48,10 +49,11 @@ namespace Eventfully
                 throw new InvalidOperationException("HandlerFactory cannot be null. A HandlerFactory is required to instantiate MessagingService");
             _messageHandlerDispatcher = new MessageDispatcher(handlerFactory);
 
-            _outbox = outbox;
-            if(_outbox == null)
+            if(outbox == null)
                 throw new InvalidOperationException("Outbox cannot be null. An Outbox is required to instantiate MessagingService");
-            
+
+            this.Outbox = outbox;
+
             _outboxMessagePump = new OutboxMessagePump(this);
 
             if(profile != null)
@@ -259,17 +261,17 @@ namespace Eventfully
         /// </summary>
         internal Task<OutboxRelayResult> RelayOutbox()
         {
-            return this._outbox.Relay(DispatchCore);
+            return this.Outbox.Relay(DispatchCore);
         }
     
         internal Task CleanUpOutbox(TimeSpan cleanupAge)
         {
-            return _outbox.CleanUp(cleanupAge);
+            return Outbox.CleanUp(cleanupAge);
         }
 
         internal Task ResetOutbox(TimeSpan resetAge)
         {
-            return _outbox.Reset(resetAge);
+            return Outbox.Reset(resetAge);
         }
 
    

@@ -80,29 +80,7 @@ namespace Eventfully.Samples.ConsoleApp
     }
 
 
-    public class DbContextFactory : IDesignTimeDbContextFactory<ApplicationDbContext>
-    {
-        public ApplicationDbContext CreateDbContext(string[] args)
-        {
-            var builder = new ConfigurationBuilder()
-                .SetBasePath(Directory.GetCurrentDirectory())
-                .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
-                .AddUserSecrets<Program>();
-            var config = builder.Build();
-            var services = new ServiceCollection();
-
-            var migrationsAssembly = typeof(Program).GetTypeInfo().Assembly.GetName().Name;
-
-            services.AddDbContext<ApplicationDbContext>(
-                x => x.UseSqlServer(config.GetConnectionString("ApplicationConnection"),
-                b => b.MigrationsAssembly(migrationsAssembly)
-               ));
-
-            var _serviceProvider = services.BuildServiceProvider();
-            var db = _serviceProvider.GetService<ApplicationDbContext>();
-            return db;
-        }
-    }
+  
 
 }
 

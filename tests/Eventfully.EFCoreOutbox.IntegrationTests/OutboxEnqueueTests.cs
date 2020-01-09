@@ -14,6 +14,8 @@ using Eventfully.Transports.Testing;
 namespace Eventfully.EFCoreOutbox.IntegrationTests
 {
     using static IntegrationTestFixture;
+    
+    [Collection("Sequential")]
     public class OutboxEnqueueTests : IntegrationTestBase, IClassFixture<OutboxEnqueueTests.Fixture>
     {
         private Fixture _fixture;
@@ -29,15 +31,6 @@ namespace Eventfully.EFCoreOutbox.IntegrationTests
         
             public Fixture()
             {
-                Outbox = new Outbox<ApplicationDbContext>(new OutboxSettings()
-                {
-                    BatchSize = 10,
-                    MaxConcurrency = 1,
-                    MaxTries = 10,
-                    SqlConnectionString = ConnectionString,
-                    DisableTransientDispatch = true,
-                });
-
                 this.Message = new TestMessage()
                 {
                     Id = Guid.NewGuid(),
@@ -50,6 +43,17 @@ namespace Eventfully.EFCoreOutbox.IntegrationTests
                 string messageBody = JsonConvert.SerializeObject(this.Message);
                 this.SerializedMessageMetaData = this.MessageMetaData != null ? JsonConvert.SerializeObject(this.MessageMetaData) : null;
                 this.MessageBytes = Encoding.UTF8.GetBytes(messageBody);
+
+                this.Outbox = new Outbox<ApplicationDbContext>(new OutboxSettings()
+                {
+                    BatchSize = 10,
+                    MaxConcurrency = 1,
+                    MaxTries = 10,
+                    SqlConnectionString = ConnectionString,
+                    DisableTransientDispatch = true,
+                });
+
+                MessagingService.Instance.Outbox = this.Outbox;
             }
         }
 
