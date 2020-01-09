@@ -14,7 +14,7 @@ namespace Eventfully.Outboxing
         /// </summary>
         /// <param name="relayCallback">method provided to relay the messages</param>
         /// <returns></returns>
-        Task<OutboxDispatchResult> Relay(Func<string, byte[], MessageMetaData, string, Task> relayCallback);
+        Task<OutboxRelayResult> Relay(Func<string, byte[], MessageMetaData, string, Task> relayCallback);
 
         /// <summary>
         /// Do any periodic cleanup necessary on the inbox 

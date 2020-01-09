@@ -184,8 +184,7 @@ namespace Eventfully
                     if (metaData.DispatchDelay.HasValue && !endpoint.SupportsDelayedDispatch)
                     {
                         options.Delay = metaData.DispatchDelay;
-                        //prevent transient dispatch
-                        metaData.SkipTransientDispatch = options.SkipTransientDispatch = true; // for safety because we set delay
+                        options.SkipTransientDispatch = true; // for safety because we set delay
                     }
                     else
                         options.SkipTransientDispatch = metaData.SkipTransientDispatch;
@@ -196,6 +195,30 @@ namespace Eventfully
             }
             //dispatch to the endpoint
             return DispatchCore(message.MessageType, resultContext.TransportMessage.Data, resultContext.TransportMessage.MetaData, endpoint);
+        }
+
+        /// <summary>
+        /// Send a transient serialized message to an endpoint bypassing the outbound pipeline
+        /// </summary>
+        /// <param name="messageTypeIdentifier"></param>
+        /// <param name="message"></param>
+        /// <param name="metaData"></param>
+        /// <param name="endpointName"></param>
+        /// <returns></returns>
+        public Task DispatchTransientCore(string messageTypeIdentifier, byte[] message, MessageMetaData metaData, string endpointName)
+        {
+            var endpoint = endpointName != null ? MessagingMap.FindEndpointByName(endpointName) : MessagingMap.FindEndpoint(messageTypeIdentifier);
+            if (endpoint == null)
+                throw new ApplicationException($"Unable to dispatch transient message. Endpoint not found. MessageTypeIdentifier: {messageTypeIdentifier}. Endpoint: {endpointName}");
+            if (metaData != null)
+            {
+                if(metaData.SkipTransientDispatch)
+                    throw new ApplicationException($"Unable to dispatch transient message.  SkipTransient was set to True. MessageTypeIdentifier: {messageTypeIdentifier}. Endpoint: {endpointName}");
+                
+                if (metaData.DispatchDelay.HasValue && !endpoint.SupportsDelayedDispatch)
+                    throw new ApplicationException($"Unable to dispatch transient message.  Delay not supported by transport. MessageTypeIdentifier: {messageTypeIdentifier}. Endpoint: {endpointName}");
+            }
+            return DispatchCore(messageTypeIdentifier, message, metaData, endpoint);
         }
 
         /// <summary>
@@ -225,10 +248,8 @@ namespace Eventfully
                 throw new ArgumentNullException(nameof(message));
             if (endpoint == null)
                 throw new ArgumentNullException(nameof(endpoint));
-
-            //if (_random.Next(0, 4) < 1)
-            //    throw new ApplicationException("Chaos");
-                return endpoint.Dispatch(messageTypeIdentifier, message, metaData);
+          
+            return endpoint.Dispatch(messageTypeIdentifier, message, metaData);
         }
 
         /****************** Outbox Management ***************************/
@@ -236,7 +257,7 @@ namespace Eventfully
         /// <summary>
         /// Dispatch messages in the outbox that are due
         /// </summary>
-        internal Task<OutboxDispatchResult> DispatchOutbox()
+        internal Task<OutboxRelayResult> RelayOutbox()
         {
             return this._outbox.Relay(DispatchCore);
         }

@@ -45,19 +45,28 @@ namespace Eventfully.EFCoreOutbox
 
         private readonly BlockingCollection<OutboxMessage> _transientDispatchQueue = new BlockingCollection<OutboxMessage>();
         private readonly SqlConnectionFactory _dbConnection;
-        internal readonly OutboxSettings Settings;
 
+        public readonly bool DisableTransientDispatch  = false;
+        public readonly int MaxTries  = 12;
+        public readonly int BatchSize  = 50;
+        public readonly int MaxConcurrency  = 1;
 
         public Outbox(OutboxSettings settings)
         {
-            Settings = settings ?? new OutboxSettings();
-
-            if (String.IsNullOrEmpty(Settings.SqlConnectionString))
+            if (settings == null)
+                throw new ArgumentNullException("OutboxSettings must not be null");
+       
+            if (String.IsNullOrEmpty(settings.SqlConnectionString))
                 throw new InvalidOperationException("EFCore Outbox requires a connectionString.  ConnectionString can not be null");
             _dbConnection = new SqlConnectionFactory(settings.SqlConnectionString);
 
-            if (!this.Settings.DisableTransientDispatch)
-                _beginConsumingTransient(settings.MaxConcurrency);
+            this.MaxTries = settings.MaxTries;
+            this.BatchSize = settings.BatchSize;
+            this.MaxConcurrency = settings.MaxConcurrency;
+            this.DisableTransientDispatch = settings.DisableTransientDispatch;
+            
+            if (!this.DisableTransientDispatch)
+                _beginConsumingTransient(this.MaxConcurrency);
         }
 
         /// <summary>
@@ -65,7 +74,7 @@ namespace Eventfully.EFCoreOutbox
         /// </summary>
         /// <param name="relayCallback"></param>
         /// <returns></returns>
-        public async Task<OutboxDispatchResult> Relay(Func<string, byte[], MessageMetaData, string, Task> relayCallback)
+        public async Task<OutboxRelayResult> Relay(Func<string, byte[], MessageMetaData, string, Task> relayCallback)
         {
             try
             {
@@ -90,15 +99,15 @@ namespace Eventfully.EFCoreOutbox
                     {
                         ov.MessageData = ovd;
                         return ov;
-                    }, new { @BatchSize = Settings.BatchSize, @CurrentDateUtc = DateTime.UtcNow });
+                    }, new { @BatchSize = this.BatchSize, @CurrentDateUtc = DateTime.UtcNow });
 
-                    Parallel.ForEach(outboxMessages, new ParallelOptions { MaxDegreeOfParallelism = Settings.MaxConcurrency },
+                    Parallel.ForEach(outboxMessages, new ParallelOptions { MaxDegreeOfParallelism = this.MaxConcurrency },
                         async outboxMessage =>
                         {
                             await _relay(outboxMessage, relayCallback);
                         });
                  
-                    return new OutboxDispatchResult(outboxMessages != null ? outboxMessages.Count() : 0, Settings.BatchSize);
+                    return new OutboxRelayResult(outboxMessages != null ? outboxMessages.Count() : 0, this.BatchSize);
                 }//using
             }
             catch (DbException exDb)
@@ -115,7 +124,7 @@ namespace Eventfully.EFCoreOutbox
 
         private async Task _relay(OutboxMessage outboxMessage, Func<string, byte[], MessageMetaData, string, Task> relayCallback)
         {
-            if (outboxMessage.TryCount > Settings.MaxTries || outboxMessage.IsExpired(DateTime.UtcNow))
+            if (outboxMessage.TryCount > this.MaxTries || outboxMessage.IsExpired(DateTime.UtcNow))
                 MarkAsFailure(outboxMessage, permanent: true);
             else
             {
@@ -292,7 +301,7 @@ namespace Eventfully.EFCoreOutbox
                     {
                         if (outboxMessage.SkipTransientDispatch)
                             return;
-                        await _relay(outboxMessage, MessagingService.Instance.DispatchCore);
+                        await _relay(outboxMessage, MessagingService.Instance.DispatchTransientCore);
                     });
             });
         }
