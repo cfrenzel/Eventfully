@@ -17,6 +17,8 @@ using Eventfully.Transports.Testing;
 namespace Eventfully.EFCoreOutbox.IntegrationTests
 {
     using static IntegrationTestFixture;
+    
+    [Collection("Sequential")]
     public class TransientDispatchTests : IntegrationTestBase, IClassFixture<TransientDispatchTests.Fixture>
     {
         private Fixture _fixture;
@@ -33,22 +35,9 @@ namespace Eventfully.EFCoreOutbox.IntegrationTests
             public byte[] MessageBytes;
             public MessageMetaData MessageMetaData;
             public string SerializedMessageMetaData;
-            public MessagingService MessagingService;
             
             public Fixture()
             {
-                this.Outbox = new Outbox<ApplicationDbContext>(new OutboxSettings()
-                {
-                    BatchSize = 10,
-                    MaxConcurrency = 1,
-                    MaxTries = 10,
-                    SqlConnectionString = ConnectionString,
-                    DisableTransientDispatch = false,
-                });
-         
-                var handlerFactory = A.Fake<IMessageHandlerFactory>();
-                MessagingService = new MessagingService(null, this.Outbox, handlerFactory);
-                
                 this.Message = new TestMessage()
                 {
                     Id = Guid.NewGuid(),
@@ -61,6 +50,17 @@ namespace Eventfully.EFCoreOutbox.IntegrationTests
                 string messageBody = JsonConvert.SerializeObject(this.Message);
                 this.SerializedMessageMetaData = this.MessageMetaData != null ? JsonConvert.SerializeObject(this.MessageMetaData) : null;
                 this.MessageBytes = Encoding.UTF8.GetBytes(messageBody);
+
+                this.Outbox = new Outbox<ApplicationDbContext>(new OutboxSettings()
+                {
+                    BatchSize = 10,
+                    MaxConcurrency = 1,
+                    MaxTries = 10,
+                    SqlConnectionString = ConnectionString,
+                    DisableTransientDispatch = false,
+                });
+
+                MessagingService.Instance.Outbox = this.Outbox;
             }
         }
 
@@ -75,7 +75,7 @@ namespace Eventfully.EFCoreOutbox.IntegrationTests
                 var endpoint = A.Fake<TestOutboundEndpoint>(x => x.WithArgumentsForConstructor(() =>
                     new TestOutboundEndpoint("TransientDispatchTestEndpoint1.1", null, null)                   )
                 );
-                _fixture.MessagingService.AddEndpoint(endpoint);
+                MessagingService.Instance.AddEndpoint(endpoint);
 
                 await outboxSession.Dispatch(_fixture.Message.MessageType, _fixture.MessageBytes, null, endpoint, new OutboxDispatchOptions());
                 A.CallTo(() => endpoint.Dispatch(_fixture.Message.MessageType, _fixture.MessageBytes, null)).MustNotHaveHappened();
@@ -130,7 +130,7 @@ namespace Eventfully.EFCoreOutbox.IntegrationTests
                 var endpoint = A.Fake<TestOutboundEndpoint>(x => x.WithArgumentsForConstructor(() =>
                     new TestOutboundEndpoint("TransientDispatchTestEndpoint1.2", null, null))
                 );
-                _fixture.MessagingService.AddEndpoint(endpoint);
+                MessagingService.Instance.AddEndpoint(endpoint);
                 A.CallTo(() => endpoint.Dispatch(_fixture.Message.MessageType, _fixture.MessageBytes, null))
                     .Throws(new ApplicationException("Test:Forced failure of transient dispatch"));
 
@@ -162,7 +162,7 @@ namespace Eventfully.EFCoreOutbox.IntegrationTests
                 var endpoint = A.Fake<TestOutboundEndpoint>(x => x.WithArgumentsForConstructor(() =>
                     new TestOutboundEndpoint("TransientDispatchTestEndpoint1.3", null, null))
                 );
-                _fixture.MessagingService.AddEndpoint(endpoint);
+                MessagingService.Instance.AddEndpoint(endpoint);
 
                 await outboxSession.Dispatch(_fixture.Message.MessageType, _fixture.MessageBytes, null, endpoint, new OutboxDispatchOptions()
                 {
@@ -202,7 +202,7 @@ namespace Eventfully.EFCoreOutbox.IntegrationTests
                 var endpoint = A.Fake<TestOutboundEndpoint>(x => x.WithArgumentsForConstructor(() =>
                     new TestOutboundEndpoint("TransientDispatchTestEndpoint1.4", null, null))
                 );
-                _fixture.MessagingService.AddEndpoint(endpoint);
+                MessagingService.Instance.AddEndpoint(endpoint);
 
                 ///the configuration gets a little funky here because in normal use the 
                 ///end user uses metaData to configure delay while behind the scenes meta is
