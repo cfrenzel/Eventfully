@@ -14,7 +14,7 @@ using System.IO;
 using Microsoft.Extensions.DependencyInjection;
 using System.Reflection;
 
-namespace Eventfully.Samples.ConsoleApp
+namespace Eventfully.EFCoreOutbox.IntegrationTests
 {
     public class ApplicationDbContext : DbContext, ISupportTransientDispatch
     {

@@ -22,10 +22,10 @@ namespace Eventfully.Transports.AzureServiceBus
     {
         private static ILogger<AzureServiceBusMessagePump> _logger = Logging.CreateLogger<AzureServiceBusMessagePump>();
 
-        private readonly Func<TransportMessage, Endpoint, Task> _handleMessageFunc;
+        private readonly Func<TransportMessage, IEndpoint, Task> _handleMessageFunc;
         private readonly IAzureServiceBusRecoverabilityProvider _recoverability;
         private readonly AzureServiceBusMetaDataMapper _metaDataMapper;
-        private readonly Endpoint _endpoint;
+        private readonly IEndpoint _endpoint;
         private readonly AsyncRetryPolicy _completeImmediateRetryPolicy;
 
         private IMessageReceiver _receiver;
@@ -34,8 +34,8 @@ namespace Eventfully.Transports.AzureServiceBus
 
 
         public AzureServiceBusMessagePump(
-            Func<TransportMessage, Endpoint, Task> handleMessageFunc, 
-            Endpoint endpoint,
+            Func<TransportMessage, IEndpoint, Task> handleMessageFunc, 
+            IEndpoint endpoint,
             AzureServiceBusMetaDataMapper metaMapper = null)
         {
             _endpoint = endpoint;

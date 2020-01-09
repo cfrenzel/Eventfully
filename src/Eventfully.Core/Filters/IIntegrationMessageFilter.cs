@@ -23,11 +23,11 @@ namespace Eventfully.Filters
 
         public IIntegrationMessage Message { get; set; }
         public MessageMetaData MessageMetaData { get; set; }
-        public Endpoint Endpoint { get; set; }
+        public IEndpoint Endpoint { get; set; }
 
         public MessageTypeProperties Props { get; set; }
 
-        public IntegrationMessageFilterContext(IIntegrationMessage message, MessageMetaData meta, Endpoint endpoint, FilterDirection direction, MessageTypeProperties props)
+        public IntegrationMessageFilterContext(IIntegrationMessage message, MessageMetaData meta, IEndpoint endpoint, FilterDirection direction, MessageTypeProperties props)
         {
             Message = message;
             MessageMetaData = meta;

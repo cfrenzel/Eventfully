@@ -15,30 +15,43 @@ using Eventfully.EFCoreOutbox;
 
 namespace Eventfully.Samples.ConsoleApp
 {
-    public class Program
+    public class Program : IDesignTimeDbContextFactory<ApplicationDbContext>
     {
         public static IConfigurationRoot _config;
         public static IServiceProvider _serviceProvider;
 
         public static async Task Main(string[] args)
         {
-            var builder = new ConfigurationBuilder()
-                .SetBasePath(Directory.GetCurrentDirectory())
-                .AddJsonFile("appsettings.json", optional: true)
-                .AddUserSecrets<Program>()
-                .AddEnvironmentVariables()
-               ;
-            _config = builder.Build();
+            _init();
             
+            await PublishOrderCreated();
+            await PublishOrderCreatedWithDelay();
+            await PublishOrderCreatedFromRawJson();
+            await PublishEncryptedPaymentMethodCreated();
+
+            Console.WriteLine("Press any key to exit...");
+            Console.ReadLine();
+        }
+
+        static void _init()
+        {
+            var builder = new ConfigurationBuilder()
+                 .SetBasePath(Directory.GetCurrentDirectory())
+                 .AddJsonFile("appsettings.json", optional: true)
+                 .AddUserSecrets<Program>()
+                 .AddEnvironmentVariables()
+                ;
+            _config = builder.Build();
+
             var _services = new ServiceCollection();
             _services.AddLogging(builder =>
-             {
-                 builder.AddConfiguration(_config.GetSection("Logging"));
-                 builder.AddDebug();
+            {
+                builder.AddConfiguration(_config.GetSection("Logging"));
+                builder.AddDebug();
                 //config.AddConsole();
-             }
+            }
             );
-           
+
             _services.AddDbContext<ApplicationDbContext>(options =>
                    options.UseSqlServer(
                        _config.GetConnectionString("ApplicationConnection")
@@ -61,17 +74,7 @@ namespace Eventfully.Samples.ConsoleApp
 
             //enable receiving messages from the configured endpoints
             _serviceProvider.UseMessagingHost();
-
-            
-            await PublishOrderCreated();
-            await PublishOrderCreatedWithDelay();
-            await PublishOrderCreatedFromRawJson();
-            await PublishEncryptedPaymentMethodCreated();
-
-            Console.WriteLine("Press any key to exit...");
-            Console.ReadLine();
         }
-
 
         static async Task PublishOrderCreated()
         {
@@ -140,5 +143,14 @@ namespace Eventfully.Samples.ConsoleApp
             ));
             await db.SaveChangesAsync();
         }
+
+
+      
+            public ApplicationDbContext CreateDbContext(string[] args)
+            {
+                _init();
+                return _serviceProvider.GetService<ApplicationDbContext>();
+            }
+        
     }
 }
