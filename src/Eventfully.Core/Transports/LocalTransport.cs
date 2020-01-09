@@ -27,9 +27,9 @@ namespace Eventfully.Transports
 
     public class LocalTransport : Transport
     {
-        private static readonly Dictionary<string, Endpoint> _replyToEndpointCache = new Dictionary<string, Endpoint>();
+        private static readonly Dictionary<string, IEndpoint> _replyToEndpointCache = new Dictionary<string, IEndpoint>();
         private static readonly Dictionary<string, string> _replyToRouteCache = new Dictionary<string, string>();
-        private static readonly Dictionary<string, Endpoint> _endpointsByName = new Dictionary<string, Endpoint>();
+        private static readonly Dictionary<string, IEndpoint> _endpointsByName = new Dictionary<string, IEndpoint>();
 
         private readonly TransportSettings _settings;
 
@@ -42,7 +42,7 @@ namespace Eventfully.Transports
 
         ///instead of sending the message out to a service bus, just return it to the messaging service for handling
         ///we'll let the outbox handle all the retries/delays/etc...
-        public override Task Dispatch(string messageTypeIdentifier, byte[] message, Endpoint endpoint, MessageMetaData metaData = null)
+        public override Task Dispatch(string messageTypeIdentifier, byte[] message, IEndpoint endpoint, MessageMetaData metaData = null)
         {
             metaData = metaData ?? new MessageMetaData();
  
@@ -51,7 +51,7 @@ namespace Eventfully.Transports
             return MessagingService.Instance.Handle(new TransportMessage(messageTypeIdentifier, message, metaData), endpoint);
         }
 
-        public override Endpoint FindEndpointForReply(MessageContext commandContext)
+        public override IEndpoint FindEndpointForReply(MessageContext commandContext)
         {
             var replyTo = commandContext.MetaData != null ? commandContext.MetaData.ReplyTo : null;
             if (String.IsNullOrEmpty(replyTo))
@@ -65,7 +65,7 @@ namespace Eventfully.Transports
             else
                 replyTo = replyTo.Substring(17);
 
-            Endpoint endpoint = null;
+            IEndpoint endpoint = null;
             if (_endpointsByName.TryGetValue(replyTo.ToLower(), out endpoint))
             {
                 _replyToEndpointCache.Add(replyTo, endpoint);
@@ -74,7 +74,7 @@ namespace Eventfully.Transports
             return null;
         }
 
-        public override void SetReplyToForCommand(Endpoint endpoint, IIntegrationCommand command, MessageMetaData meta)
+        public override void SetReplyToForCommand(IEndpoint endpoint, IIntegrationCommand command, MessageMetaData meta)
         {
             meta = meta ?? new MessageMetaData();
          
@@ -83,7 +83,7 @@ namespace Eventfully.Transports
             meta.ReplyTo = _replyToRouteCache[endpoint.Name];
         }
 
-        public override Task Start(Endpoint endpoint, CancellationToken cancellationToken)
+        public override Task Start(IEndpoint endpoint, CancellationToken cancellationToken)
         {
             _endpointsByName.Add(endpoint.Name.ToLower(), endpoint);
             return Task.CompletedTask;

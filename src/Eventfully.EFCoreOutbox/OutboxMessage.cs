@@ -42,7 +42,7 @@ namespace Eventfully.EFCoreOutbox
         [NotMapped]
         public bool SkipTransientDispatch { get; private set; } = false;
 
-        public OutboxMessage() {
+        private OutboxMessage() {
         }
 
         public OutboxMessage(string type, byte[] messageData, string messageMetaData, DateTime tryAtUtc, bool skipTransientDispatch = false, DateTime? expiresAtUtc = null) :

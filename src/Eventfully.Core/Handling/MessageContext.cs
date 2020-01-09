@@ -10,7 +10,7 @@ namespace Eventfully
     {
         public MessageMetaData MetaData { get; protected set; }
 
-        internal Endpoint Endpoint { get;  set; }
+        internal IEndpoint Endpoint { get;  set; }
 
         internal MessagingService MessagingService { get; set; }
 
@@ -18,7 +18,7 @@ namespace Eventfully
 
         internal IOutboxSession OutboxSession { get; set; }
 
-        public MessageContext(MessageMetaData meta, Endpoint endpoint, MessagingService messagingService, MessageTypeProperties props = null)
+        public MessageContext(MessageMetaData meta, IEndpoint endpoint, MessagingService messagingService, MessageTypeProperties props = null)
         {
            MetaData = meta;
            Endpoint = endpoint;
@@ -32,7 +32,7 @@ namespace Eventfully
             return MessagingService.Reply(reply, replyToEndpoint, this.OutboxSession, replyMetaData, this.MetaData);
         }
 
-        internal Endpoint GetEndpointForReply()
+        internal IEndpoint GetEndpointForReply()
         {
             return Endpoint.Transport.FindEndpointForReply(this);
         }

@@ -8,15 +8,15 @@ using System.Threading.Tasks;
 namespace Eventfully
 {
 
-    public class Endpoint
+    public class Endpoint : IEndpoint
     {
-        private readonly EndpointSettings _settings;
-        private readonly Transport _transport;
-        
-        public string Name { get; private set; }
+        protected readonly EndpointSettings _settings;
+        protected readonly Transport _transport;
 
-        public EndpointSettings Settings  => _settings;
-        public Transport Transport  => _transport;
+        public string Name { get; protected set; }
+
+        public EndpointSettings Settings => _settings;
+        public Transport Transport => _transport;
 
         public List<Type> BoundMessageTypes { get; protected set; } = new List<Type>();
         public List<string> BoundMessageIdentifiers { get; protected set; } = new List<string>();
@@ -25,7 +25,11 @@ namespace Eventfully
         public bool IsWriter { get; protected set; }
 
         public bool SupportsDelayedDispatch => _transport.SupportsDelayedDispatch;
+
         public Endpoint(EndpointSettings settings)
+            :this(settings, null)
+        {}
+        public Endpoint(EndpointSettings settings, Transport transport)
         {
             _settings = settings;
             this.Name = settings.Name;
@@ -39,24 +43,28 @@ namespace Eventfully
                 this.BoundMessageIdentifiers.Add(messageTypeIdentifier);
 
             //create the transport from the supplied factory
-            _transport = settings.TransportSettings.Create();
+            if (transport != null)
+                _transport = transport;
+            
+            if(_transport == null)
+                _transport = settings.TransportSettings.Create();
         }
 
-        public Task Start(CancellationToken cancellationToken = default(CancellationToken))
+        public virtual Task Start(CancellationToken cancellationToken = default(CancellationToken))
         {
             return _transport.Start(this, cancellationToken);
         }
 
-        public Task Dispatch(string messageTypeIdenfifier, byte[] message, MessageMetaData metaData = null)
+        public virtual Task Dispatch(string messageTypeIdenfifier, byte[] message, MessageMetaData metaData = null)
         {
             return Transport.Dispatch(messageTypeIdenfifier, message, this, metaData);
         }
 
-        public void SetReplyToForCommand(IIntegrationCommand command, MessageMetaData meta)
+        public virtual void SetReplyToForCommand(IIntegrationCommand command, MessageMetaData meta)
         {
             Transport.SetReplyToForCommand(this, command, meta);
         }
 
 
-    }  
+    }
 }

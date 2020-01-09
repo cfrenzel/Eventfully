@@ -31,8 +31,8 @@ namespace Eventfully.Transports.AzureServiceBus
         private AzureServiceBusMessagePump _messagePump;
         private Task _messagePumpTask = null;
 
-        private static readonly Dictionary<Tuple<string, string>, Endpoint> _endpointsByEntity = new Dictionary<Tuple<string, string>, Endpoint>();
-        private static readonly Dictionary<string, Endpoint> _replyToCache = new Dictionary<string, Endpoint>();
+        private static readonly Dictionary<Tuple<string, string>, IEndpoint> _endpointsByEntity = new Dictionary<Tuple<string, string>, IEndpoint>();
+        private static readonly Dictionary<string, IEndpoint> _replyToCache = new Dictionary<string, IEndpoint>();
         private static readonly Dictionary<string, string> _replyToRouteCache = new Dictionary<string, string>();
 
         public override bool SupportsDelayedDispatch => true;
@@ -43,7 +43,7 @@ namespace Eventfully.Transports.AzureServiceBus
             _metaDataMapper = new AzureServiceBusMetaDataMapper();
         }
 
-        public override Task Start(Endpoint endpoint, CancellationToken cancellationToken = default(CancellationToken))
+        public override Task Start(IEndpoint endpoint, CancellationToken cancellationToken = default(CancellationToken))
         {
             //validate the connection string and store it for later lookup by entityPath and endpoint
             var connBuilder = new ServiceBusConnectionStringBuilder(endpoint.Settings.ConnectionString);
@@ -59,19 +59,19 @@ namespace Eventfully.Transports.AzureServiceBus
              return Task.CompletedTask;
         }
 
-        public Task Handle(TransportMessage transportMessage, Endpoint endpoint)
+        public Task Handle(TransportMessage transportMessage, IEndpoint endpoint)
         {
             ///TODO: inject the service in if possible
             return MessagingService.Instance.Handle(transportMessage, endpoint);
         }
 
-        public override Task Dispatch(string messageTypeIdenfifier, byte[] message, Endpoint endpoint, MessageMetaData metaData = null)
+        public override Task Dispatch(string messageTypeIdenfifier, byte[] message, IEndpoint endpoint, MessageMetaData metaData = null)
         {
             return _dispatch(messageTypeIdenfifier, message, endpoint, metaData);
         }
 
      
-        protected Task _dispatch(string messageTypeIdentifier, byte[] messageBody, Endpoint endpoint, MessageMetaData meta = null)
+        protected Task _dispatch(string messageTypeIdentifier, byte[] messageBody, IEndpoint endpoint, MessageMetaData meta = null)
         {
             var message = new Message(messageBody);
             var sender = AzureServiceBusClientCache.GetSender(endpoint.Settings.ConnectionString);
@@ -88,7 +88,7 @@ namespace Eventfully.Transports.AzureServiceBus
             return sender.SendAsync(message);
         }
 
-        public override Endpoint FindEndpointForReply(MessageContext commandContext)
+        public override IEndpoint FindEndpointForReply(MessageContext commandContext)
         {
             var replyTo = commandContext.MetaData != null ? commandContext.MetaData.ReplyTo : null;
             if (String.IsNullOrEmpty(replyTo))
@@ -102,8 +102,8 @@ namespace Eventfully.Transports.AzureServiceBus
             if(!_parsePartialConnectionString(replyTo, out endpoint, out entityPath))
                 throw new ApplicationException("Invalid replyTo for AzureServiceBusTransport. Unable to find entity path and endpoint.  Should contain ';' seperated endpoint and entitypath");
 
-            Endpoint endpointByEndpoint = null;
-            Endpoint endpointByEntity = null;          
+            IEndpoint endpointByEndpoint = null;
+            IEndpoint endpointByEntity = null;          
             if (_endpointsByEntity.TryGetValue(new Tuple<string, string>(endpoint, entityPath), out endpointByEntity))
             {
                 _replyToCache.Add(replyTo, endpointByEntity);
@@ -128,7 +128,7 @@ namespace Eventfully.Transports.AzureServiceBus
         }
 
 
-        public override void SetReplyToForCommand(Endpoint endpoint, IIntegrationCommand command, MessageMetaData meta)
+        public override void SetReplyToForCommand(IEndpoint endpoint, IIntegrationCommand command, MessageMetaData meta)
         {
             meta = meta ?? new MessageMetaData();
             //if (meta == null)

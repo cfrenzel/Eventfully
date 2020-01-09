@@ -23,17 +23,21 @@ namespace Eventfully
         private static MessagingService _instance = null;
         public static MessagingService Instance { get => _instance; }
 
-        private readonly Dictionary<Endpoint, InboundMessagePipeline> _endpointInboundPipeline = new Dictionary<Endpoint, InboundMessagePipeline>();
-        private readonly Dictionary<Endpoint, OutboundMessagePipeline> _endpointOutboundPipeline = new Dictionary<Endpoint, OutboundMessagePipeline>();
+        private readonly Dictionary<IEndpoint, InboundMessagePipeline> _endpointInboundPipeline = new Dictionary<IEndpoint, InboundMessagePipeline>();
+        private readonly Dictionary<IEndpoint, OutboundMessagePipeline> _endpointOutboundPipeline = new Dictionary<IEndpoint, OutboundMessagePipeline>();
         private readonly Random _random = new Random();
         
         private readonly IMessageDispatcher _messageHandlerDispatcher;
         private readonly OutboxMessagePump _outboxMessagePump;
-        private readonly IOutbox _outbox;
 
         private int _maxImmediateRetryCount = 1;// deal with transient errors before doing a more sophisticated retry with backoff
         private readonly AsyncRetryPolicy _immediateHandleRetryPolicy;
 
+        public IOutbox Outbox { get; set; }
+
+        public MessagingService(IOutbox outbox, IMessageHandlerFactory handlerFactory) 
+            :this(null, outbox, handlerFactory)
+        {}
 
         public MessagingService(Profile profile, IOutbox outbox, IMessageHandlerFactory handlerFactory)
         {
@@ -45,13 +49,15 @@ namespace Eventfully
                 throw new InvalidOperationException("HandlerFactory cannot be null. A HandlerFactory is required to instantiate MessagingService");
             _messageHandlerDispatcher = new MessageDispatcher(handlerFactory);
 
-            _outbox = outbox;
-            if(_outbox == null)
+            if(outbox == null)
                 throw new InvalidOperationException("Outbox cannot be null. An Outbox is required to instantiate MessagingService");
-            
+
+            this.Outbox = outbox;
+
             _outboxMessagePump = new OutboxMessagePump(this);
 
-            _configure(profile);
+            if(profile != null)
+              _configure(profile);
 
             _immediateHandleRetryPolicy = Policy
                 .Handle<Exception>(x => !(x is NonTransientException))
@@ -66,7 +72,7 @@ namespace Eventfully
         /// <param name="transportMessage">the raw message data and headers</param>
         /// <param name="endpoint">the endpoint the message came in on</param>
         /// <returns></returns>
-        public Task Handle(TransportMessage transportMessage, Endpoint endpoint)
+        public Task Handle(TransportMessage transportMessage, IEndpoint endpoint)
         {
 
             InboundMessagePipeline messagePipeline = null;
@@ -140,7 +146,7 @@ namespace Eventfully
             return Dispatch(@event, metaData);
         }
 
-        internal Task Reply(IIntegrationReply reply, Endpoint endpoint, IOutboxSession outbox, MessageMetaData metaData = null, MessageMetaData commandMetaData = null)
+        internal Task Reply(IIntegrationReply reply, IEndpoint endpoint, IOutboxSession outbox, MessageMetaData metaData = null, MessageMetaData commandMetaData = null)
         {
             metaData = metaData ?? new MessageMetaData();
             metaData.PopulateForReplyTo(commandMetaData);
@@ -155,7 +161,7 @@ namespace Eventfully
             return Dispatch(message, metaData, endpoint, outbox);
         }
 
-        public Task Dispatch(IIntegrationMessage message,  MessageMetaData metaData, Endpoint endpoint, IOutboxSession outbox = null)
+        public Task Dispatch(IIntegrationMessage message,  MessageMetaData metaData, IEndpoint endpoint, IOutboxSession outbox = null)
         {
             if (message == null)
                 throw new ArgumentNullException(nameof(message));
@@ -194,6 +200,30 @@ namespace Eventfully
         }
 
         /// <summary>
+        /// Send a transient serialized message to an endpoint bypassing the outbound pipeline
+        /// </summary>
+        /// <param name="messageTypeIdentifier"></param>
+        /// <param name="message"></param>
+        /// <param name="metaData"></param>
+        /// <param name="endpointName"></param>
+        /// <returns></returns>
+        public Task DispatchTransientCore(string messageTypeIdentifier, byte[] message, MessageMetaData metaData, string endpointName)
+        {
+            var endpoint = endpointName != null ? MessagingMap.FindEndpointByName(endpointName) : MessagingMap.FindEndpoint(messageTypeIdentifier);
+            if (endpoint == null)
+                throw new ApplicationException($"Unable to dispatch transient message. Endpoint not found. MessageTypeIdentifier: {messageTypeIdentifier}. Endpoint: {endpointName}");
+            if (metaData != null)
+            {
+                if(metaData.SkipTransientDispatch)
+                    throw new ApplicationException($"Unable to dispatch transient message.  SkipTransient was set to True. MessageTypeIdentifier: {messageTypeIdentifier}. Endpoint: {endpointName}");
+                
+                if (metaData.DispatchDelay.HasValue && !endpoint.SupportsDelayedDispatch)
+                    throw new ApplicationException($"Unable to dispatch transient message.  Delay not supported by transport. MessageTypeIdentifier: {messageTypeIdentifier}. Endpoint: {endpointName}");
+            }
+            return DispatchCore(messageTypeIdentifier, message, metaData, endpoint);
+        }
+
+        /// <summary>
         /// Send a serialized message to an endpoint bypassing the outbound pipeline
         /// useful for services relay messages like the outbox 
         /// </summary>
@@ -214,16 +244,14 @@ namespace Eventfully
         /// Send a serialized message to an endpoint bypassing the outbound pipeline
         /// useful for services relay messages like the outbox 
         ///</summary>
-        public Task DispatchCore(string messageTypeIdentifier, byte[] message, MessageMetaData metaData, Endpoint endpoint)
+        public Task DispatchCore(string messageTypeIdentifier, byte[] message, MessageMetaData metaData, IEndpoint endpoint)
         {
             if (message == null)
                 throw new ArgumentNullException(nameof(message));
             if (endpoint == null)
                 throw new ArgumentNullException(nameof(endpoint));
-
-            //if (_random.Next(0, 4) < 1)
-            //    throw new ApplicationException("Chaos");
-                return endpoint.Dispatch(messageTypeIdentifier, message, metaData);
+          
+            return endpoint.Dispatch(messageTypeIdentifier, message, metaData);
         }
 
         /****************** Outbox Management ***************************/
@@ -231,23 +259,23 @@ namespace Eventfully
         /// <summary>
         /// Dispatch messages in the outbox that are due
         /// </summary>
-        internal Task<OutboxDispatchResult> DispatchOutbox()
+        internal Task<OutboxRelayResult> RelayOutbox()
         {
-            return this._outbox.Relay(DispatchCore);
+            return this.Outbox.Relay(DispatchCore);
         }
     
         internal Task CleanUpOutbox(TimeSpan cleanupAge)
         {
-            return _outbox.CleanUp(cleanupAge);
+            return Outbox.CleanUp(cleanupAge);
         }
 
         internal Task ResetOutbox(TimeSpan resetAge)
         {
-            return _outbox.Reset(resetAge);
+            return Outbox.Reset(resetAge);
         }
 
    
-        private void _setReplyTo(Endpoint commandEndpoint, IIntegrationCommand command, MessageMetaData commandMeta)
+        private void _setReplyTo(IEndpoint commandEndpoint, IIntegrationCommand command, MessageMetaData commandMeta)
         {
             if(commandMeta == null)
                 throw new InvalidOperationException("Command cannot be sent.  Unable to set replyTo on null MessageMetaData");
@@ -297,7 +325,7 @@ namespace Eventfully
             AddEndpoint(endpoint);
         }
 
-        public void AddEndpoint(Endpoint endpoint)
+        public void AddEndpoint(IEndpoint endpoint)
         {
             if (endpoint.Transport == null)
                 throw new InvalidOperationException($"Endpoint: {endpoint.Name} must be configured with a Transport");

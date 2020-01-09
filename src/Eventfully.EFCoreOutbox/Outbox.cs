@@ -45,22 +45,40 @@ namespace Eventfully.EFCoreOutbox
 
         private readonly BlockingCollection<OutboxMessage> _transientDispatchQueue = new BlockingCollection<OutboxMessage>();
         private readonly SqlConnectionFactory _dbConnection;
-        internal readonly OutboxSettings Settings;
+        private readonly IRetryIntervalStrategy _retryStrategy;
+
+        public readonly bool DisableTransientDispatch  = false;
+        public readonly int MaxTries  = 12;
+        public readonly int BatchSize  = 50;
+        public readonly int MaxConcurrency  = 1;
 
 
-        public Outbox(OutboxSettings settings)
+        public Outbox(OutboxSettings settings, IRetryIntervalStrategy retryStrategy = null)
         {
-            Settings = settings ?? new OutboxSettings();
-
-            if (String.IsNullOrEmpty(Settings.SqlConnectionString))
+            if (settings == null)
+                throw new ArgumentNullException("OutboxSettings must not be null");
+       
+            if (String.IsNullOrEmpty(settings.SqlConnectionString))
                 throw new InvalidOperationException("EFCore Outbox requires a connectionString.  ConnectionString can not be null");
             _dbConnection = new SqlConnectionFactory(settings.SqlConnectionString);
 
-            if (!this.Settings.DisableTransientDispatch)
-                _beginConsumingTransient(settings.MaxConcurrency);
+            _retryStrategy = retryStrategy ?? new DefaultExponentialRetryStrategy();
+
+            this.MaxTries = settings.MaxTries;
+            this.BatchSize = settings.BatchSize;
+            this.MaxConcurrency = settings.MaxConcurrency;
+            this.DisableTransientDispatch = settings.DisableTransientDispatch;
+            
+            if (!this.DisableTransientDispatch)
+                _beginConsumingTransient(this.MaxConcurrency);
         }
 
-        public async Task<OutboxDispatchResult> Relay(Func<string, byte[], MessageMetaData, string, Task> relayCallback)
+        /// <summary>
+        /// Get outbox messages for relay/dispatch
+        /// </summary>
+        /// <param name="relayCallback"></param>
+        /// <returns></returns>
+        public async Task<OutboxRelayResult> Relay(Func<string, byte[], MessageMetaData, string, Task> relayCallback)
         {
             try
             {
@@ -85,15 +103,15 @@ namespace Eventfully.EFCoreOutbox
                     {
                         ov.MessageData = ovd;
                         return ov;
-                    }, new { @BatchSize = Settings.BatchSize, @CurrentDateUtc = DateTime.UtcNow });
+                    }, new { @BatchSize = this.BatchSize, @CurrentDateUtc = DateTime.UtcNow });
 
-                    Parallel.ForEach(outboxMessages, new ParallelOptions { MaxDegreeOfParallelism = Settings.MaxConcurrency },
+                    Parallel.ForEach(outboxMessages, new ParallelOptions { MaxDegreeOfParallelism = this.MaxConcurrency },
                         async outboxMessage =>
                         {
                             await _relay(outboxMessage, relayCallback);
                         });
                  
-                    return new OutboxDispatchResult(outboxMessages != null ? outboxMessages.Count() : 0, Settings.BatchSize);
+                    return new OutboxRelayResult(outboxMessages != null ? outboxMessages.Count() : 0, this.BatchSize);
                 }//using
             }
             catch (DbException exDb)
@@ -110,7 +128,7 @@ namespace Eventfully.EFCoreOutbox
 
         private async Task _relay(OutboxMessage outboxMessage, Func<string, byte[], MessageMetaData, string, Task> relayCallback)
         {
-            if (outboxMessage.TryCount > Settings.MaxTries || outboxMessage.IsExpired(DateTime.UtcNow))
+            if (!_isValidForRelay(outboxMessage))
                 MarkAsFailure(outboxMessage, permanent: true);
             else
             {
@@ -215,40 +233,39 @@ namespace Eventfully.EFCoreOutbox
 
         }
 
-        private void MarkAsFailure(OutboxMessage outboxEvent, bool permanent = false)
+        private void MarkAsFailure(OutboxMessage outboxMessage, bool permanent = false)
         {
             try
             {
                 using (var conn = _dbConnection.Get())
                 {
-
                     conn.Open();
                     IDbCommand command = conn.CreateCommand();
                     command.CommandText = @"
                         update dbo.OutboxMessages SET [Status] = @Status, PriorityDateUtc = @PriorityDate
                         where Id = @Id and [Status] = 1";
 
-                    SqlParameter idParam = new SqlParameter("@Id", outboxEvent.Id)
+                    var nowUtc = DateTime.UtcNow;
+                    var priorityDate = this._retryStrategy.GetNextDateUtc(outboxMessage.TryCount, nowUtc);
+
+                    if (!_isValidForRetry(outboxMessage))
+                        permanent = true;
+
+                    SqlParameter idParam = new SqlParameter("@Id", outboxMessage.Id)
                     {
                         SqlDbType = SqlDbType.UniqueIdentifier,
                         Direction = ParameterDirection.Input,
                     };
 
-                    //reset the status to 0 for reprocessing
+                    //reset the status to 0 for reprocessing or 100 for perm failure
                     SqlParameter statusParam = new SqlParameter("@Status", permanent ? OutboxMessageStatus.Failed : OutboxMessageStatus.Ready)
                     {
                         SqlDbType = SqlDbType.Int,
                         Direction = ParameterDirection.Input,
                     };
 
-                    var nowUtc = DateTime.UtcNow;
-                    var counter = outboxEvent.TryCount > 0 ? outboxEvent.TryCount : 1;
-
-                    //2^3,2^4, 2^5... (8,16,32,64,128 (2min), 256 (4min), 512 (8min), 1024 (17min), 2048 (34min), 4096 (1hr) , 8192 ( 2.2hr) ....)
-                    var priorityDate = nowUtc.AddSeconds(Math.Pow(2, counter + 2));
-
                     //update the priority date with a backoff strategy
-                    SqlParameter priorityDateParam = new SqlParameter("@PriorityDate", permanent ? outboxEvent.PriorityDateUtc : priorityDate)
+                    SqlParameter priorityDateParam = new SqlParameter("@PriorityDate", permanent ? outboxMessage.PriorityDateUtc : priorityDate)
                     {
                         SqlDbType = SqlDbType.DateTime2,
                         Direction = ParameterDirection.Input,
@@ -262,14 +279,38 @@ namespace Eventfully.EFCoreOutbox
             }
             catch (DbException exDb)
             {
-                _log.LogError(exDb, "Database Exception marking outbox message. failure Message Id: {id} Type: {type} Tries: {retryCount}", outboxEvent.Id, outboxEvent.Type, outboxEvent.TryCount);
+                _log.LogError(exDb, "Database Exception marking outbox message. failure Message Id: {id} Type: {type} Tries: {retryCount}", outboxMessage.Id, outboxMessage.Type, outboxMessage.TryCount);
                 throw;
             }
             catch (Exception ex)
             {
-                _log.LogError(ex, "Exception marking outbox message as failure. Message Id: {id} Type: {type} Tries: {retryCount}", outboxEvent.Id, outboxEvent.Type, outboxEvent.TryCount);
+                _log.LogError(ex, "Exception marking outbox message as failure. Message Id: {id} Type: {type} Tries: {retryCount}", outboxMessage.Id, outboxMessage.Type, outboxMessage.TryCount);
                 throw;
             }
+
+        }
+
+        private bool _isValidForRelay(OutboxMessage outboxMessage)
+        {
+            if (outboxMessage == null)
+                throw new ArgumentNullException("Can not validate null outboxMessage for relay");
+
+            if (outboxMessage.TryCount > this.MaxTries || outboxMessage.IsExpired(DateTime.UtcNow))
+                return false;
+            return true;
+
+        }
+
+        private bool _isValidForRetry(OutboxMessage outboxMessage)
+        {
+            if (outboxMessage == null)
+                throw new ArgumentNullException("Can not validate null outboxMessage for retry");
+
+            //like relay but since the trycount is incremented upon dequeue here we 
+            //check if trycount equals max
+            if (outboxMessage.TryCount >= this.MaxTries || outboxMessage.IsExpired(DateTime.UtcNow))
+                return false;
+            return true;
 
         }
 
@@ -277,7 +318,7 @@ namespace Eventfully.EFCoreOutbox
         /// Block on the transient queue in the background
         /// </summary>
         /// <param name="maxConcurrency"></param>
-        public void _beginConsumingTransient(int maxConcurrency = 1)
+        private void _beginConsumingTransient(int maxConcurrency = 1)
         {
             Task.Run(() =>
             {
@@ -287,7 +328,7 @@ namespace Eventfully.EFCoreOutbox
                     {
                         if (outboxMessage.SkipTransientDispatch)
                             return;
-                        await _relay(outboxMessage, MessagingService.Instance.DispatchCore);
+                        await _relay(outboxMessage, MessagingService.Instance.DispatchTransientCore);
                     });
             });
         }
@@ -344,23 +385,3 @@ namespace Eventfully.EFCoreOutbox
         }
     }
 }
-
-
-//Parallel.For(ForEach(_transientDispatchQueue.GetConsumingPartitioner(),
-//    new ParallelOptions { MaxDegreeOfParallelism = 3 },
-//    async outboxMessage =>
-//    {
-//        if (outboxMessage.SkipTransientDispatch || outboxMessage.IsExpired(DateTime.UtcNow))
-//            return;
-//        try
-//        {
-//            var metaData = outboxMessage.MessageData.MetaData != null ? JsonConvert.DeserializeObject<MessageMetaData>(outboxMessage.MessageData.MetaData) : null;
-//            await MessagingService.Instance.DispatchRaw(outboxMessage.Type, outboxMessage.MessageData.Data, metaData, outboxMessage.Endpoint);
-//            MarkAsComplete(outboxMessage);
-//        }
-//        catch (Exception ex)
-//        {
-//            MarkAsFailure(outboxMessage);
-//            _log.LogError(ex, "Error dispatching Outbox transient Message Id: {id} Type: {type}.  The event will be retried by the Outbox", outboxMessage.Id, outboxMessage.Type);
-//        }
-//    });
