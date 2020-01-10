@@ -76,12 +76,19 @@ class Build : NukeBuild
         //.DependsOn(Compile)
         .Executes(() =>
         {
+            int commitNum = 0;
+            string NuGetVersionCustom = GitVersion.NuGetVersionV2;
+
+            //if it's not a tagged release - append the commit number to the package version
+            if (Int32.TryParse(GitVersion.CommitsSinceVersionSource, out commitNum))
+                NuGetVersionCustom = commitNum > 0 ? NuGetVersionCustom + $"+{commitNum}" : NuGetVersionCustom;
+
             DotNetPack(s => s
                 .SetProject(Solution.GetProject("Eventfully.Core"))
                 .SetConfiguration(Configuration)
                 .EnableNoBuild()
                 .EnableNoRestore()
-                .SetVersion(GitVersion.NuGetVersionV2)
+                .SetVersion(NuGetVersionCustom)
                 .SetDescription("Lightweight Reliable Messaging Framework with Outbox")
                 .SetPackageTags("messaging servicebus cqrs distributed azureservicebus efcore ddd microservice")
                 .SetNoDependencies(true)
@@ -92,7 +99,7 @@ class Build : NukeBuild
                 .SetConfiguration(Configuration)
                 .EnableNoBuild()
                 .EnableNoRestore()
-                .SetVersion(GitVersion.NuGetVersionV2)
+                .SetVersion(NuGetVersionCustom)
                 .SetDescription("EFcore based Outbox for Eventfully")
                 .SetPackageTags("messaging servicebus cqrs distributed azureservicebus efcore ddd microservice outbox")
                 .SetNoDependencies(true)
@@ -103,7 +110,7 @@ class Build : NukeBuild
                 .SetConfiguration(Configuration)
                 .EnableNoBuild()
                 .EnableNoRestore()
-                .SetVersion(GitVersion.NuGetVersionV2)
+                .SetVersion(NuGetVersionCustom)
                 .SetDescription("AzureServiceBus Transport for Eventfully")
                 .SetPackageTags("messaging servicebus cqrs distributed azureservicebus efcore ddd microservice")
                 .SetNoDependencies(true)
@@ -114,7 +121,7 @@ class Build : NukeBuild
                 .SetConfiguration(Configuration)
                 .EnableNoBuild()
                 .EnableNoRestore()
-                .SetVersion(GitVersion.NuGetVersionV2)
+                .SetVersion(NuGetVersionCustom)
                 .SetDescription("AzureKeyVault KeyProvider for Messaging")
                 .SetPackageTags("messaging servicebus cqrs distributed azureservicebus efcore ddd microservice azurekeyvault")
                 .SetNoDependencies(true)
