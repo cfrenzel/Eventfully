@@ -80,8 +80,13 @@ class Build : NukeBuild
             string NuGetVersionCustom = GitVersion.NuGetVersionV2;
 
             //if it's not a tagged release - append the commit number to the package version
+            //tagged commits on master have versions
+            // - v0.3.0-beta
+            //other commits have
+            // - v0.3.0-beta1
+
             if (Int32.TryParse(GitVersion.CommitsSinceVersionSource, out commitNum))
-                NuGetVersionCustom = commitNum > 0 ? NuGetVersionCustom + $"+{commitNum}" : NuGetVersionCustom;
+                NuGetVersionCustom = commitNum > 0 ? NuGetVersionCustom + $"{commitNum}" : NuGetVersionCustom;
 
             DotNetPack(s => s
                 .SetProject(Solution.GetProject("Eventfully.Core"))
