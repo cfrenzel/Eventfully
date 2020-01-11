@@ -16,7 +16,7 @@ namespace Eventfully.EFCoreOutbox
             _connectionString = connectionString;
         }
 
-        public IDbConnection Get()
+        public SqlConnection Get()
         {
             return new SqlConnection(_connectionString);
         }
