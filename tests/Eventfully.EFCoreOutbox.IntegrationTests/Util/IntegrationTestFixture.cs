@@ -99,24 +99,29 @@ namespace Eventfully.EFCoreOutbox.IntegrationTests
 
         public static async Task<OutboxMessage> CreateOutboxMessage(string endpointName, string uniqueId, OutboxMessageStatus status, DateTime? priorityDateUtc = null, DateTime? expiresAtUtc = null)
         {
+            var messageMetaData = new MessageMetaData(messageId: uniqueId);
+            var serializedMessageMetaData = messageMetaData != null ? JsonConvert.SerializeObject(messageMetaData) : null;
+
+            OutboxMessage om = new OutboxMessage(
+                Message.MessageType,
+                MessageBytes,
+                serializedMessageMetaData,
+                priorityDateUtc.HasValue ? priorityDateUtc.Value : DateTime.UtcNow,
+                endpointName,
+                true,
+                expiresAtUtc
+            )
+            {
+                Status = (int)status,
+            };
+            return await CreateOutboxMessage(om);
+
+        }
+        public static async Task<OutboxMessage> CreateOutboxMessage(OutboxMessage om)
+        {
             using (var scope = NewScope())
             {
-                var messageMetaData = new MessageMetaData(messageId: uniqueId);
-                var serializedMessageMetaData = messageMetaData != null ? JsonConvert.SerializeObject(messageMetaData) : null;
-
-                OutboxMessage om = new OutboxMessage(
-                    Message.MessageType,
-                    MessageBytes,
-                    serializedMessageMetaData,
-                    priorityDateUtc.HasValue ? priorityDateUtc.Value : DateTime.UtcNow,
-                    endpointName,
-                    true,
-                    expiresAtUtc
-                )
-                {
-                    Status = (int)status,
-                };
-
+           
                 var db = scope.ServiceProvider.GetService<ApplicationDbContext>();
                 db.Set<OutboxMessage>().Add(om);
                 await db.SaveChangesAsync();

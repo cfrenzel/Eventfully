@@ -10,6 +10,7 @@ using System.Linq;
 using Microsoft.EntityFrameworkCore;
 using Eventfully.Handlers;
 using FakeItEasy;
+using System.Data.Common;
 
 namespace Eventfully.EFCoreOutbox.IntegrationTests
 {
@@ -62,7 +63,7 @@ namespace Eventfully.EFCoreOutbox.IntegrationTests
                 MessagingService.Instance.Outbox = this.Outbox;
             }
         }
-
+       
 
 
         [Fact]
@@ -171,6 +172,98 @@ namespace Eventfully.EFCoreOutbox.IntegrationTests
 
         }
 
+        [Fact]
+        public async Task Should_hydrate_all_properties()
+        {
+            string endpointName = "OutboxDequeueTests1.1";
+            var messageMetaData = new MessageMetaData();
+            var serializedMessageMetaData = messageMetaData != null ? JsonConvert.SerializeObject(messageMetaData) : null;
 
+            var message1 = new OutboxMessage("Test.Message1", _fixture.MessageBytes, "{ meta: 1}", DateTime.UtcNow, endpointName,
+                skipTransientDispatch: true,
+                expiresAtUtc: DateTime.UtcNow.AddMinutes(30),
+                id: Guid.NewGuid())
+            { Status = (int)OutboxMessageStatus.Ready, TryCount = 0, CreatedAtUtc = DateTime.UtcNow.AddMinutes(-3) };
+
+            var message2 = new OutboxMessage("Test.Message2", _fixture.MessageBytes, null, DateTime.UtcNow.AddSeconds(2), null,
+                skipTransientDispatch: true,
+                expiresAtUtc: null)
+            { Status = (int)OutboxMessageStatus.InProgress, TryCount = 1, CreatedAtUtc = DateTime.UtcNow.AddMinutes(-2) };
+            ;
+
+            var message3 = new OutboxMessage("Test.Message3", _fixture.MessageBytes, "{ meta: 3}", DateTime.UtcNow.AddSeconds(3), endpointName,
+                skipTransientDispatch: false,
+                expiresAtUtc: null)
+            { Status = (int)OutboxMessageStatus.Processed, TryCount = 2, CreatedAtUtc = DateTime.UtcNow.AddMinutes(-1) };
+            ;
+
+            await IntegrationTestFixture.CreateOutboxMessage(message1);
+            await IntegrationTestFixture.CreateOutboxMessage(message2);
+            await IntegrationTestFixture.CreateOutboxMessage(message3);
+
+            //if the number of parameters changes in the outbox implementation this should throw an error
+            using (var conn = new SqlConnectionFactory(ConnectionString).Get())
+            {
+                var sql = @"
+                   select inserted.Id, inserted.PriorityDateUtc, inserted.[Type], inserted.Endpoint,
+                           inserted.TryCount, inserted.[Status], inserted.ExpiresAtUtc, inserted.CreatedAtUtc,
+                           od.Id, od.[Data], od.MetaData
+	                FROM OutboxMessages inserted
+	                INNER JOIN OutboxMessageData od
+		                ON inserted.Id = od.Id  
+                    ORDER BY inserted.CreatedAtUtc asc
+                    ";
+
+                conn.Open();
+                DbCommand command = conn.CreateCommand();
+                command.CommandText = sql;
+
+                using (var reader = await command.ExecuteReaderAsync())
+                {
+                    var outboxMessages = _fixture.Outbox.HydrateOutboxMessages(reader);
+                    outboxMessages.Count().ShouldBe(3);
+                    var o1 = outboxMessages.ElementAt(0);
+                    var o2 = outboxMessages.ElementAt(1);
+                    var o3 = outboxMessages.ElementAt(2);
+
+                    o1.Id.ShouldBe(message1.Id);
+                    o1.PriorityDateUtc.ShouldBe(message1.PriorityDateUtc);
+                    o1.Type.ShouldBe(message1.Type);
+                    o1.Endpoint.ShouldBe(message1.Endpoint);
+                    o1.TryCount.ShouldBe(message1.TryCount);
+                    o1.Status.ShouldBe(message1.Status);
+                    o1.ExpiresAtUtc.ShouldBe(message1.ExpiresAtUtc);
+                    o1.CreatedAtUtc.ShouldBe(message1.CreatedAtUtc);
+                    o1.MessageData.Id.ShouldBe(message1.MessageData.Id);
+                    o1.MessageData.Data.ShouldBe(message1.MessageData.Data);
+                    o1.MessageData.MetaData.ShouldBe(message1.MessageData.MetaData);
+
+                    o2.Id.ShouldBe(message2.Id);
+                    o2.PriorityDateUtc.ShouldBe(message2.PriorityDateUtc);
+                    o2.Type.ShouldBe(message2.Type);
+                    o2.Endpoint.ShouldBe(message2.Endpoint);
+                    o2.TryCount.ShouldBe(message2.TryCount);
+                    o2.Status.ShouldBe(message2.Status);
+                    o2.ExpiresAtUtc.ShouldBe(message2.ExpiresAtUtc);
+                    o2.CreatedAtUtc.ShouldBe(message2.CreatedAtUtc);
+                    o2.MessageData.Id.ShouldBe(message2.MessageData.Id);
+                    o2.MessageData.Data.ShouldBe(message2.MessageData.Data);
+                    o2.MessageData.MetaData.ShouldBe(message2.MessageData.MetaData);
+
+                    o3.Id.ShouldBe(message3.Id);
+                    o3.PriorityDateUtc.ShouldBe(message3.PriorityDateUtc);
+                    o3.Type.ShouldBe(message3.Type);
+                    o3.Endpoint.ShouldBe(message3.Endpoint);
+                    o3.TryCount.ShouldBe(message3.TryCount);
+                    o3.Status.ShouldBe(message3.Status);
+                    o3.ExpiresAtUtc.ShouldBe(message3.ExpiresAtUtc);
+                    o3.CreatedAtUtc.ShouldBe(message3.CreatedAtUtc);
+                    o3.MessageData.Id.ShouldBe(message3.MessageData.Id);
+                    o3.MessageData.Data.ShouldBe(message3.MessageData.Data);
+                    o3.MessageData.MetaData.ShouldBe(message3.MessageData.MetaData);
+
+                }
+            }//using
+        }
     }
 }

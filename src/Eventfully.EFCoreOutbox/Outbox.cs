@@ -9,7 +9,6 @@ using System.Data.SqlClient;
 using Microsoft.Extensions.Logging;
 using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
-using Dapper;
 using Eventfully.Outboxing;
 
 namespace Eventfully.EFCoreOutbox
@@ -31,10 +30,8 @@ namespace Eventfully.EFCoreOutbox
     {
         public string SqlConnectionString { get; set; }
         public bool DisableTransientDispatch { get; set; } = false;
-
         public int MaxTries { get; set; } = 12;
         public int BatchSize { get; set; } = 50;
-
         public int MaxConcurrency { get; set; } = 1;
     }
 
@@ -74,7 +71,7 @@ namespace Eventfully.EFCoreOutbox
         }
 
         /// <summary>
-        /// Get outbox messages for relay/dispatch
+        /// Get outbox messages for relay
         /// </summary>
         /// <param name="relayCallback"></param>
         /// <returns></returns>
@@ -85,13 +82,13 @@ namespace Eventfully.EFCoreOutbox
                 using (var conn = _dbConnection.Get())
                 {
                     var sql = @"
-                    with NextBatch as (
+                    WITH NextBatch as (
 		                select top(@BatchSize) *
 		                from OutboxMessages with (rowlock, readpast)
 		                where [Status] = 0 and PriorityDateUtc <= @CurrentDateUtc
 		                order by PriorityDateUtc
 	                )
-                    update NextBatch SET [Status] = 1, TryCount = NextBatch.TryCount + 1 
+                    UPDATE NextBatch SET [Status] = 1, TryCount = NextBatch.TryCount + 1 
 	                OUTPUT inserted.Id, inserted.PriorityDateUtc, inserted.[Type], inserted.Endpoint,
                            inserted.TryCount, inserted.[Status], inserted.ExpiresAtUtc, inserted.CreatedAtUtc,
                            od.Id, od.[Data], od.MetaData
@@ -99,19 +96,32 @@ namespace Eventfully.EFCoreOutbox
 	                INNER JOIN OutboxMessageData od
 		                ON NextBatch.Id = od.Id
                     ";
-                    var outboxMessages = await conn.QueryAsync<OutboxMessage, OutboxMessage.OutboxMessageData, OutboxMessage>(sql, (ov, ovd) =>
-                    {
-                        ov.MessageData = ovd;
-                        return ov;
-                    }, new { @BatchSize = this.BatchSize, @CurrentDateUtc = DateTime.UtcNow });
 
-                    Parallel.ForEach(outboxMessages, new ParallelOptions { MaxDegreeOfParallelism = this.MaxConcurrency },
-                        async outboxMessage =>
-                        {
-                            await _relay(outboxMessage, relayCallback);
-                        });
-                 
-                    return new OutboxRelayResult(outboxMessages != null ? outboxMessages.Count() : 0, this.BatchSize);
+                    conn.Open();
+                    DbCommand command = conn.CreateCommand();
+                    command.CommandText = sql;
+                    SqlParameter batchParam = new SqlParameter("@BatchSize", this.BatchSize)
+                    {
+                        SqlDbType = SqlDbType.Int,
+                        Direction = ParameterDirection.Input,
+                    };
+                    command.Parameters.Add(batchParam);
+                    SqlParameter currDateParam = new SqlParameter("@CurrentDateUtc", DateTime.UtcNow)
+                    {
+                        SqlDbType = SqlDbType.DateTime2,
+                        Direction = ParameterDirection.Input,
+                    };
+                    command.Parameters.Add(currDateParam);
+                    using (var reader = await command.ExecuteReaderAsync())
+                    {
+                        var outboxMessages = HydrateOutboxMessages(reader);
+                        Parallel.ForEach(outboxMessages, new ParallelOptions { MaxDegreeOfParallelism = this.MaxConcurrency },
+                            async outboxMessage =>
+                            {
+                                await _relay(outboxMessage, relayCallback);
+                            });
+                        return new OutboxRelayResult(outboxMessages != null ? outboxMessages.Count() : 0, this.BatchSize);
+                    }
                 }//using
             }
             catch (DbException exDb)
@@ -126,25 +136,40 @@ namespace Eventfully.EFCoreOutbox
             }
         }
 
-        private async Task _relay(OutboxMessage outboxMessage, Func<string, byte[], MessageMetaData, string, Task> relayCallback)
+        public IEnumerable<OutboxMessage> HydrateOutboxMessages(DbDataReader reader)
         {
-            if (!_isValidForRelay(outboxMessage))
-                MarkAsFailure(outboxMessage, permanent: true);
-            else
+            List<OutboxMessage> outboxMessages = new List<OutboxMessage>();
+            while (reader.Read())
             {
-                try
+                var id = reader.GetGuid(0);
+                var priorityDateUtc = reader.GetDateTime(1);
+                var type = reader.GetString(2);
+                string endpoint = null;
+                if (!reader.IsDBNull(3))
+                    endpoint = reader.GetString(3);
+                var tryCount = reader.GetInt32(4);
+                var status = reader.GetInt32(5);
+                DateTime? expiresAtUtc = null;
+                if (!reader.IsDBNull(6))
+                    expiresAtUtc = reader.GetDateTime(6);
+                var createdAtUtc = reader.GetDateTime(7);
+                var dataId = reader.GetGuid(8);
+                var data = (byte[])reader.GetValue(9);
+                string metaData = null;
+                if (!reader.IsDBNull(10))
+                    metaData = reader.GetString(10);
+                var outboxMessage = new OutboxMessage(type, data, metaData, priorityDateUtc, endpoint, false, expiresAtUtc, id)
                 {
-                    var metaData = outboxMessage.MessageData.MetaData != null ? JsonConvert.DeserializeObject<MessageMetaData>(outboxMessage.MessageData.MetaData) : null;
-                    await relayCallback(outboxMessage.Type, outboxMessage.MessageData.Data, metaData, outboxMessage.Endpoint);
-                    MarkAsComplete(outboxMessage);
-                }
-                catch (Exception ex)
-                {
-                    MarkAsFailure(outboxMessage);
-                    _log.LogError(ex, "Error publishing Outbox Event Id: {id} Type: {type} Tries: {retryCount}", outboxMessage.Id, outboxMessage.Type, outboxMessage.TryCount);
-                }
-            }//else
+                    TryCount = tryCount,
+                    Status = status,
+                    CreatedAtUtc = createdAtUtc,
+                };
+                outboxMessages.Add(outboxMessage);
+            }
+            return outboxMessages;
         }
+
+       
 
         public async Task CleanUp(TimeSpan cleanupAge)
         {
@@ -156,10 +181,17 @@ namespace Eventfully.EFCoreOutbox
                     delete from OutboxMessages 
                     where PriorityDateUtc <= @AgeLimitDate and [Status] = 2;
                     ";
-                    var res = await conn.ExecuteAsync(sql, new
+
+                    conn.Open();
+                    DbCommand command = conn.CreateCommand();
+                    command.CommandText = sql;
+                    SqlParameter parameter = new SqlParameter("@AgeLimitDate", DateTime.UtcNow.Subtract(cleanupAge))
                     {
-                        @AgeLimitDate = DateTime.UtcNow.Add(cleanupAge.Negate()),
-                    });
+                        SqlDbType = SqlDbType.DateTime2,
+                        Direction = ParameterDirection.Input,
+                    };
+                    command.Parameters.Add(parameter);
+                    int rows = await command.ExecuteNonQueryAsync();
                 }
                 catch (DbException exDb)
                 {
@@ -184,10 +216,17 @@ namespace Eventfully.EFCoreOutbox
                     update OutboxMessages Set Status = 0 
                     where PriorityDateUtc <= @ResetLimitDate and [Status] = 1;                    
                     ";
-                    var res = await conn.ExecuteAsync(sql, new
+
+                    conn.Open();
+                    DbCommand command = conn.CreateCommand();
+                    command.CommandText = sql;
+                    SqlParameter parameter = new SqlParameter("@ResetLimitDate", DateTime.UtcNow.Subtract(resetAge))
                     {
-                        @ResetLimitDate = DateTime.UtcNow.Add(resetAge.Negate())
-                    });
+                        SqlDbType = SqlDbType.DateTime2,
+                        Direction = ParameterDirection.Input,
+                    };
+                    command.Parameters.Add(parameter);
+                    int rows = await command.ExecuteNonQueryAsync();
                 }
                 catch (DbException exDb)
                 {
@@ -200,6 +239,7 @@ namespace Eventfully.EFCoreOutbox
                     throw;
                 }
             }
+
         }
 
         private void MarkAsComplete(OutboxMessage outboxMessage)
@@ -288,6 +328,26 @@ namespace Eventfully.EFCoreOutbox
                 throw;
             }
 
+        }
+
+        private async Task _relay(OutboxMessage outboxMessage, Func<string, byte[], MessageMetaData, string, Task> relayCallback)
+        {
+            if (!_isValidForRelay(outboxMessage))
+                MarkAsFailure(outboxMessage, permanent: true);
+            else
+            {
+                try
+                {
+                    var metaData = outboxMessage.MessageData.MetaData != null ? JsonConvert.DeserializeObject<MessageMetaData>(outboxMessage.MessageData.MetaData) : null;
+                    await relayCallback(outboxMessage.Type, outboxMessage.MessageData.Data, metaData, outboxMessage.Endpoint);
+                    MarkAsComplete(outboxMessage);
+                }
+                catch (Exception ex)
+                {
+                    MarkAsFailure(outboxMessage);
+                    _log.LogError(ex, "Error publishing Outbox Event Id: {id} Type: {type} Tries: {retryCount}", outboxMessage.Id, outboxMessage.Type, outboxMessage.TryCount);
+                }
+            }//else
         }
 
         private bool _isValidForRelay(OutboxMessage outboxMessage)

@@ -26,7 +26,7 @@ namespace Eventfully.EFCoreOutbox
 
         public int Status { get; set; }
 
-        public DateTime CreatedAtUtc { get; private set; } = DateTime.UtcNow;
+        public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
         public DateTime? ExpiresAtUtc { get; set; }
 
         public virtual OutboxMessageData MessageData { get; set; }
@@ -49,9 +49,9 @@ namespace Eventfully.EFCoreOutbox
             this(type, messageData, messageMetaData, tryAtUtc, null, skipTransientDispatch, expiresAtUtc)
         { }
 
-        public OutboxMessage(string type, byte[] messageData, string messageMetaData, DateTime tryAtUtc, string endpoint, bool skipTransientDispatch = false, DateTime? expiresAtUtc = null)
+        public OutboxMessage(string type, byte[] messageData, string messageMetaData, DateTime tryAtUtc, string endpoint, bool skipTransientDispatch = false, DateTime? expiresAtUtc = null, Guid? id = null)
         {
-            this.Id = MassTransit.NewId.NextGuid();
+            this.Id = id.HasValue ? id.Value : MassTransit.NewId.NextGuid();
             this.Type = type;
             this.MessageData = new OutboxMessageData(this.Id, messageData, messageMetaData);
             this.PriorityDateUtc = tryAtUtc;
