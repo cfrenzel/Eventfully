@@ -74,14 +74,14 @@ namespace Eventfully.EFCoreOutbox.IntegrationTests
         [Fact]
         public async Task Should_return_unique_messages_to_concurrent_requests()
         {
-            int numMessages = 40;
+            int numMessages = 60;
             int batchSize = 5;
-            int numClients = 2;
+            int numClients = 3;
             int numResultSets = numMessages / batchSize / numClients;
 
             await _fixture.CreateOutboxMessages(numMessages);
             var sql = $@"
-                DECLARE @runAt0 AS TIME = '{DateTime.Now.AddSeconds(3).ToString("HH:mm:ss")}'--'13:32:00' --local time
+                DECLARE @runAt0 AS TIME = '{DateTime.Now.AddSeconds(4).ToString("HH:mm:ss")}'--'13:32:00' --local time
                 DECLARE @nextRun AS NVARCHAR(8) = CONVERT(nvarchar(8), @runAt0, 108);
                 DECLARE @BatchSize AS INT = {batchSize} --5
                 DECLARE @Counter AS INT =  0
@@ -94,7 +94,7 @@ namespace Eventfully.EFCoreOutbox.IntegrationTests
                 BEGIN
                     SET @CurrentDateUtc = GETUTCDATE()
                     SET @Counter = @Counter + 1
-	                SET @runAt0 = DATEADD(SECOND, 2, @runAt0);
+	                SET @runAt0 = DATEADD(MILLISECOND, 2000, @runAt0);
 
 	                 with NextBatch as (
 		                            select top(@BatchSize) *
@@ -113,23 +113,25 @@ namespace Eventfully.EFCoreOutbox.IntegrationTests
 	                WAITFOR TIME @nextRun
                 END
             ";
-
-
             _log.WriteLine($"sets:{numResultSets}");
             _log.WriteLine($"{sql}");
 
             List<Guid> results = new List<Guid>();
-            
-            Parallel.Invoke(
-                 () => results.AddRange(RunQuery("query1", sql, numResultSets)),
-                 () => results.AddRange(RunQuery("query2", sql, numResultSets))
-              );
+          
+            var t1 = RunQuery("query1", sql, numResultSets);
+            var t2 = RunQuery("query2", sql, numResultSets);
+            var t3 = RunQuery("query3", sql, numResultSets);
+
+            results.AddRange(await t1);
+            results.AddRange(await t2);
+            results.AddRange(await t3);
+
 
             results.Count.ShouldBe(numMessages);
             results.Distinct().Count().ShouldBe(numMessages);
 
         }
-        private List<Guid> RunQuery(string label, string sql, int numberResultSets)
+        private async Task<List<Guid>> RunQuery(string label, string sql, int numberResultSets)
         {
             SqlConnection conn;
             SqlCommand cmd;
@@ -139,7 +141,7 @@ namespace Eventfully.EFCoreOutbox.IntegrationTests
             {
                 conn.Open();
                 cmd = new SqlCommand(sql, conn) {/* CommandTimeout = 60*/ };
-                using (SqlDataReader sqlReader = cmd.ExecuteReader())
+                using (SqlDataReader sqlReader = await cmd.ExecuteReaderAsync())
                 {
                     for (int i = 0; i < numberResultSets; i++)
                     {
@@ -150,7 +152,7 @@ namespace Eventfully.EFCoreOutbox.IntegrationTests
                             results.Add(id);
                             _log.WriteLine($"{label}/{i}: {id}");                       
                         }
-                        Task.Delay(3000).Wait();
+                        await Task.Delay(2000);
                         sqlReader.NextResult();
                     }
                  }

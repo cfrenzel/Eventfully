@@ -13,7 +13,6 @@ using Microsoft.Extensions.Logging;
 using Microsoft.EntityFrameworkCore;
 
 using Newtonsoft.Json;
-using Dapper;
 using Eventfully.Outboxing;
 
 namespace Eventfully.EFCoreOutbox
