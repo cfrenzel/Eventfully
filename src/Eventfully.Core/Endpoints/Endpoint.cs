@@ -36,11 +36,17 @@ namespace Eventfully
             this.IsReader = settings.IsReader;
             this.IsWriter = settings.IsWriter;
 
-            foreach (Type messageType in settings.MessageTypes)
-                this.BoundMessageTypes.Add(messageType);
-
-            foreach (string messageTypeIdentifier in settings.MessageTypeIdentifiers)
-                this.BoundMessageIdentifiers.Add(messageTypeIdentifier);
+            if (settings.MessageTypes != null)
+            {
+                foreach (Type messageType in settings.MessageTypes)
+                    this.BoundMessageTypes.Add(messageType);
+            }
+            
+            if (settings.MessageTypeIdentifiers != null)
+            {
+                foreach (string messageTypeIdentifier in settings.MessageTypeIdentifiers)
+                    this.BoundMessageIdentifiers.Add(messageTypeIdentifier);
+            }
 
             //create the transport from the supplied factory
             if (transport != null)

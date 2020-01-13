@@ -161,7 +161,7 @@ namespace Eventfully
             return Dispatch(message, metaData, endpoint, outbox);
         }
 
-        public Task Dispatch(IIntegrationMessage message,  MessageMetaData metaData, IEndpoint endpoint, IOutboxSession outbox = null)
+        public Task Dispatch(IIntegrationMessage message,  MessageMetaData metaData, IEndpoint endpoint, IOutboxSession outboxSession = null)
         {
             if (message == null)
                 throw new ArgumentNullException(nameof(message));
@@ -178,7 +178,7 @@ namespace Eventfully
             }
             var resultContext = messagePipeline.Process(new IntegrationMessageFilterContext(message, metaData, endpoint, FilterDirection.Outbound, null));
 
-            if (outbox != null)//dispatch through the outbox
+            if (outboxSession != null)//dispatch through the outbox
             {
                 OutboxDispatchOptions options = new OutboxDispatchOptions(){};
                 if (metaData != null)
@@ -193,7 +193,7 @@ namespace Eventfully
 
                     options.ExpiresAtUtc = metaData.ExpiresAtUtc;
                 }
-                return outbox.Dispatch(message.MessageType, resultContext.TransportMessage.Data, resultContext.TransportMessage.MetaData, endpoint, options);
+                return outboxSession.Dispatch(message.MessageType, resultContext.TransportMessage.Data, resultContext.TransportMessage.MetaData, endpoint, options);
             }
             //dispatch to the endpoint
             return DispatchCore(message.MessageType, resultContext.TransportMessage.Data, resultContext.TransportMessage.MetaData, endpoint);
@@ -344,7 +344,8 @@ namespace Eventfully
 
                 foreach (string identifier in endpoint.BoundMessageIdentifiers)
                     MessagingMap.AddEndpointRoute(identifier, endpoint);
- 
+
+
                 if (endpoint.Settings.IsEventDefault)
                     MessagingMap.SetDefaultPublishToEndpoint(endpoint);
  
