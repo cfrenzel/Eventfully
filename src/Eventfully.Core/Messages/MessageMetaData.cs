@@ -132,7 +132,7 @@ namespace Eventfully
         {
             get
             {
-                if (this.ContainsKey(HeaderType.ExpiresAtUtc.Value))
+                if (this.ContainsKey(HeaderType.ExpiresAtUtc.Value) && this[HeaderType.ExpiresAtUtc.Value] != null)
                     return GetDateTimeUtc(HeaderType.ExpiresAtUtc.Value);
                     //return DateTime.Parse(this[HeaderType.ExpiresAtUtc.Value]).ToUniversalTime();
                 return null;
@@ -149,7 +149,7 @@ namespace Eventfully
         {
             get
             {
-                if (this.ContainsKey(HeaderType.TimeToLive.Value))
+                if (this.ContainsKey(HeaderType.TimeToLive.Value) && this[HeaderType.TimeToLive.Value] != null)
                     return TimeSpan.Parse(this[HeaderType.TimeToLive.Value]);
                 return null;
             }
@@ -166,7 +166,7 @@ namespace Eventfully
         {
             get
             {
-                if (this.ContainsKey(HeaderType.DispatchDelay.Value))
+                if (this.ContainsKey(HeaderType.DispatchDelay.Value) && this[HeaderType.DispatchDelay.Value] != null)
                     return TimeSpan.Parse(this[HeaderType.DispatchDelay.Value]);
                 return null;
             }
@@ -212,12 +212,13 @@ namespace Eventfully
             set { this[HeaderType.EncryptionKeyName.Value] = value; }
         }
 
-        public MessageMetaData(TimeSpan? delay = null, string correlationId = null, string messageId = null, bool skipTransient = false) : this()
+        public MessageMetaData(TimeSpan? delay = null, string correlationId = null, string messageId = null, bool skipTransient = false, DateTime? expiresAtUtc = null) : this()
         {
             this.DispatchDelay = delay;
             this.SkipTransientDispatch = skipTransient;
             this.CorrelationId = correlationId;
             this.MessageId = messageId;
+            this.ExpiresAtUtc = expiresAtUtc;
         }
 
         public MessageMetaData() : this(DateTime.UtcNow){ }

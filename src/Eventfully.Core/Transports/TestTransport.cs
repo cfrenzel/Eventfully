@@ -27,6 +27,7 @@ namespace Eventfully.Transports.Testing
         { }
     }
 
+
     public class TestFailingOutboundEndpoint : TestOutboundEndpoint
     {
         public TestFailingOutboundEndpoint(string name, List<Type> boundedMessageTypes, List<string> boundedMessageTypeIds)//, Func<string, byte[], IEndpoint, MessageMetaData, Task> dispatchCallback)
@@ -51,10 +52,13 @@ namespace Eventfully.Transports.Testing
     }
     public class TestOutboundEndpointSettings : EndpointSettings
     {
-        public TestOutboundEndpointSettings(string name, List<Type> boundedMessageTypes = null, List<string> boundMessageTypeIds = null) : base(name)
+        public TestOutboundEndpointSettings(string name, List<Type> boundedMessageTypes = null, List<string> boundMessageTypeIds = null) 
+            : base(name)
         {
             this.IsReader = false;
             this.IsWriter = true;
+            this.MessageTypeIdentifiers = boundMessageTypeIds;
+            this.MessageTypes = boundedMessageTypes;
         }
     }
 
@@ -69,6 +73,48 @@ namespace Eventfully.Transports.Testing
         
     }
 
+    public class TestNullTransportFactory : ITransportFactory
+    {
+        public TestNullTransportFactory()//TestEndpoint endpoint, Func<string, byte[], IEndpoint, MessageMetaData, Task> dispatchCallback)
+        {
+        }
+        public Transport Create(TransportSettings settings) => null;// Endpoint, _dispatchCallback);
+
+    }
+
+    public class TestNullTransportEndpoint : IEndpoint
+    {
+       
+        public List<string> BoundMessageIdentifiers => null;
+        public List<Type> BoundMessageTypes => null;
+        public bool IsReader => false;
+
+        public bool IsWriter => true;
+
+        public string Name => "TestNullTransportEndpoint";
+
+        public EndpointSettings Settings => null;
+
+        public bool SupportsDelayedDispatch => false;
+
+        public Transport Transport => null;
+
+        public Task Dispatch(string messageTypeIdenfifier, byte[] message, MessageMetaData metaData = null)
+        {
+            throw new NotImplementedException();
+        }
+
+        public void SetReplyToForCommand(IIntegrationCommand command, MessageMetaData meta)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task Start(CancellationToken cancellationToken = default)
+        {
+            throw new NotImplementedException();
+        }
+    }
+
     public class TestTransportSettings : TransportSettings
     {
         private readonly ITransportFactory _factory;
@@ -78,11 +124,21 @@ namespace Eventfully.Transports.Testing
         }//TestEndpoint endpoint, Func<string, byte[], IEndpoint, MessageMetaData, Task> dispatchCallback) => _factory = new TestOutboundTransportFactory(endpoint, dispatchCallback);
 
     }
+    public class TestNullTransportSettings : TransportSettings
+    {
+        private readonly ITransportFactory _factory;
+        public override ITransportFactory Factory => _factory;
+        public TestNullTransportSettings()
+        {
+            _factory = new TestNullTransportFactory();
+        }
+    }
     public class TestTransport : Transport
     {
         //public TestEndpoint Endpoint;
         //private Func<string, byte[], IEndpoint, MessageMetaData, Task> _dispatchCallBack;
-       
+    
+
         public override bool SupportsDelayedDispatch => false;
         public TestTransport() { }// TestEndpoint endpoint, Func<string, byte[], IEndpoint, MessageMetaData, Task> dispatchCallback)
         public override Task Dispatch(string messageTypeIdentifier, byte[] message, IEndpoint endpoint, MessageMetaData metaData = null) => Task.CompletedTask;// => _dispatchCallBack(messageTypeIdentifier, message, endpoint, metaData);
@@ -91,4 +147,5 @@ namespace Eventfully.Transports.Testing
         public override Task Start(IEndpoint endpoint, CancellationToken cancellationToken) => Task.CompletedTask;
      
     }
+
 }
