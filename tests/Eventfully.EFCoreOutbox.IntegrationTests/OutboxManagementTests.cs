@@ -118,7 +118,7 @@ namespace Eventfully.EFCoreOutbox.IntegrationTests
                     .AsNoTracking().ToList();
                 outboxMessages.Count.ShouldBe(5);
 
-                //there shoule only be 2 processed message left, the other 2 should be deleted
+                //there shoule only be 2 processed message left, the other 2 should be deletedf
                 outboxMessages.Where(x => x.Status == (int)OutboxMessageStatus.Processed).Count().ShouldBe(2);
             }
         }
