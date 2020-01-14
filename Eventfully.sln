@@ -25,6 +25,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Eventfully.EFCoreOutbox.Uni
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Eventfully.EFCoreOutbox.IntegrationTests", "tests\Eventfully.EFCoreOutbox.IntegrationTests\Eventfully.EFCoreOutbox.IntegrationTests.csproj", "{E5227AD4-DFA2-474B-B81C-A036A8F00F9F}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Eventfully.Core.UnitTests", "tests\Eventfully.Core.UnitTests\Eventfully.Core.UnitTests.csproj", "{8A1EED48-E189-407E-AEBF-C403E014B594}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -61,6 +63,10 @@ Global
 		{E5227AD4-DFA2-474B-B81C-A036A8F00F9F}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{E5227AD4-DFA2-474B-B81C-A036A8F00F9F}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{E5227AD4-DFA2-474B-B81C-A036A8F00F9F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{8A1EED48-E189-407E-AEBF-C403E014B594}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8A1EED48-E189-407E-AEBF-C403E014B594}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8A1EED48-E189-407E-AEBF-C403E014B594}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8A1EED48-E189-407E-AEBF-C403E014B594}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -70,6 +76,7 @@ Global
 		{05AD897F-43E7-4F71-975F-0D70EF1B8405} = {8309B347-86AF-4211-84ED-779F6E31CD1C}
 		{6E3687B3-AD59-4FFA-95C4-77BB8284B96E} = {4B2CB6B5-234C-4E71-B21F-521447B7A78B}
 		{E5227AD4-DFA2-474B-B81C-A036A8F00F9F} = {4B2CB6B5-234C-4E71-B21F-521447B7A78B}
+		{8A1EED48-E189-407E-AEBF-C403E014B594} = {4B2CB6B5-234C-4E71-B21F-521447B7A78B}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {4F1C7EF5-369B-4779-A5EA-0CE3CD2250DE}
