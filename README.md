@@ -88,15 +88,21 @@ Lightweight Reliable Messaging Framework using Outbox Pattern / EFCore / AzureSe
 
 **Configure Messaging**
 
--The simplest way to configure Transports (think AzureServiceBus) and Endpoints (think a specific queue or topic) is to implement a <code>Profile</code>.
-  - Configure an Endpoint by providing a name: "Events"
+- The simplest way to configure Transports (think AzureServiceBus) and Endpoints (think a specific queue or topic) is to implement a <code>Profile</code>.
+  - Configure an Endpoint by providing a name: "Events" 
+   
   - Specify whether the endpoint is 
     - <code>Inbound</code> - we want to receive and handle messages from it
     - <code>Outbound</code> - we want to write messages to it
     - <code>InboundOutbound</code> - we want to do both.  Useful for apps that asynchronously talk to themselves
   - For <code>Outbound</code> endpoints we can bind specific Message Types to the endpoint.  This allows us to publish Events without specifying an Endpoint
     - <code>.BindEvent<OrderCreated>()</code>
-  - <code>.AsEventDefault()</code> to make the endpoint the default for all Events
+    - <code>.AsEventDefault()</code> to make the endpoint the default for all Events
+    - > <strong>Convention:</strong> use Endpoint names: "Events", "Commands", "Replies" to automatically make the endpoint a default
+  - Specify a Transport
+    - <code>.UseAzureServiceBusTransport()</code>
+    - <code>.UseLocalTransport()</code> only uses the <code>Outbox</code> and dispatches messages locally without a servicebus
+
 ```csharp
 public class MessagingProfile : Profile
     {
@@ -105,25 +111,41 @@ public class MessagingProfile : Profile
             ConfigureEndpoint("Events")
                 .AsInboundOutbound() //for our example will be reading and writing to this endpoint
                 .BindEvent<PaymentMethodCreated>()
-                    //see AuzureKeyVaultSample for a better way
-                    .UseAesEncryption(config.GetSection("SampleAESKey").Value)
-                    .UseLocalTransport()
+                .UseLocalTransport()
                 ;
         }
     }
 ```
 
 **Configuring Transient Dispatch for EFCore and SqlServer**
+- Often when you're sending a small number of messages within a Transaction, it makes sense for the messages to dispatch immediately after committing to the outbox.  This avoids any delays normal incurred by polling the outbox.  This feature is enabled by default and is referred to <code>TransientDispatch</code>.  Until we figure out a better way to detect a successful save in EFCore you'll need to help out by implementing `ISupportTransientDispatch` in your DbContext.  Simply publish a C# event when the changes ar saved.
 
 ```csharp
 public class ApplicationDbContext : DbContext, ISupportTransientDispatch
-    {
-
-        private readonly IDomainEventDispatcher _dispatcher;
+    {     
         public event EventHandler ChangesPersisted;
 ```
 
+```csharp
+ public override int SaveChanges()
+ {
+     var res = base.SaveChanges();
+      _postSaveChanges();
+     return res;
+ }
+      
+ public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default(CancellationToken))
+ {
+      var res = await base.SaveChangesAsync(cancellationToken);
+      _postSaveChanges();
+      return res;
+ }
 
+ private void _postSaveChanges()
+ {
+      this.ChangesPersisted?.Invoke(this, null);
+ }
+```
 
 - Eventfully plugs into your DI framework
 
