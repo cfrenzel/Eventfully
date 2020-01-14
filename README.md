@@ -50,7 +50,8 @@ Event handlers implement <code>IMessageHandler&lt;Event&gt;</code>.
   ```
 
 **Publishing Events**
-To Publish an <code>OrderCreated</code> event only if saving the <code>Order</code> succeeds - inject an <code>IMessagingClient</code> into your constructor.  Use the <code>IMessagingClient</code> to publish the event before calling <code>DbContext.SaveChanges</code>.  This will save the event to the <code>Outbox</code> within the same transaction as the <code>Order</code>.  The framework will try (and retry) to publish the event to the configured Transport in the background.
+
+To Publish an <code>OrderCreated</code> event only if saving the <code>Order</code> Entity succeeds - inject an <code>IMessagingClient</code> into your constructor.  Use the <code>IMessagingClient</code> to publish the event before calling <code>DbContext.SaveChanges</code>.  This will save the event to the <code>Outbox</code> within the same transaction as the <code>Order</code>.  The framework will try (and retry) to publish the event to the configured Transport in the background.
 
 ```csharp
   public class OrderCreator
@@ -88,7 +89,7 @@ To Publish an <code>OrderCreated</code> event only if saving the <code>Order</co
 
 **Configure Messaging**
 
-- The simplest way to configure Transports (think AzureServiceBus) and Endpoints (think a specific queue or topic) is to implement a <code>Profile</code>.
+The simplest way to configure Transports (think AzureServiceBus) and Endpoints (think a specific queue or topic) is to implement a <code>Profile</code>.
   - Configure an Endpoint by providing a name: "Events" 
    
   - Specify whether the endpoint is 
@@ -118,7 +119,8 @@ public class MessagingProfile : Profile
 ```
 
 **Configuring Transient Dispatch for EFCore and SqlServer**
-- Often when you're sending a small number of messages within a Transaction, it makes sense for the messages to dispatch immediately after committing to the outbox.  This avoids any delays normal incurred by polling the outbox.  This feature is enabled by default and is referred to <code>TransientDispatch</code>.  Until we figure out a better way to detect a successful save in EFCore you'll need to help out by implementing `ISupportTransientDispatch` in your DbContext.  Simply publish a C# event when the changes ar saved.
+
+Often when you're sending a small number of messages within a Transaction, it makes sense for the messages to dispatch immediately after committing to the outbox.  This avoids any delays normal incurred by polling the outbox.  This feature is enabled by default and is referred to <code>TransientDispatch</code>.  Until we figure out a better way to detect a successful save in EFCore you'll need to help out by implementing `ISupportTransientDispatch` in your DbContext.  Simply publish a C# event when the changes ar saved.
 
 ```csharp
 public class ApplicationDbContext : DbContext, ISupportTransientDispatch
@@ -147,10 +149,33 @@ public class ApplicationDbContext : DbContext, ISupportTransientDispatch
  }
 ```
 
-- Eventfully plugs into your DI framework
+**Registering with Container at Startup**
 
-- Eventfully hooks into your DbContext/UnitOfWork to allow sending messages within a transaction.  If your transaction fails the message doesn't 
+Eventfully plugs into your DI framework.  For Microsoft.DependencyInjection 
 
+- Add an Outbox `services.AddEFCoreOutbox`
+- `services.AddMessaging`
+- `_serviceProvider.UseMessagingHost()` - to enable processing of `Inbound` endpoints and `MessageBox`
+
+```csharp
+ 
+ services.AddEFCoreOutbox<ApplicationDbContext>(settings =>
+    {
+        settings.DisableTransientDispatch = false;
+        settings.MaxConcurrency = 1;
+        settings.SqlConnectionString = _config.GetConnectionString("ApplicationConnection");
+    });
+
+    services.AddMessaging(
+        new MessagingProfile(_config),
+        null,
+        typeof(OrderCreated).GetTypeInfo().Assembly
+    );
+
+    //enable receiving messages from the configured endpoints
+    _serviceProvider = services.BuildServiceProvider();
+    _serviceProvider.UseMessagingHost();
+```
 
 
 **Setup Encryption for an Event Type **
