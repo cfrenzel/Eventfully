@@ -16,6 +16,7 @@ Lightweight Reliable Messaging Framework using Outbox Pattern / EFCore / AzureSe
 - Easy to customize message deserialization
 - Encryption support (AES)
   - Azure Key Vault support out of the box
+- Simple Sagas
 - Configurable Message Processing Pipeline
 - Pluggable Transports, Outboxes, MessageHandling, Encryption, Dependency Injection
 - Supports Events, Command/Reply
@@ -196,6 +197,21 @@ Eventfully plugs into your DI framework.  For Microsoft.DependencyInjection
     .UseAesEncryption("keyName", new AzureKeyVaultKeyProvider(config.GetSection("KeyVaultUrl").Value))
 ```
 
+**Configuring Messages with MessageMetaData**
+
+- Add arbitrary data to a message
+```csharp
+   var meta = new MessageMetaData();
+   meta.Add("CustomProp", "CustomValue");
+
+```
+- Predefined Meta Data
+  - DispatchDelay
+  - CorrelationId 
+  - SessionId
+  - MessageId
+  - SkipTransient
+
 **Delayed Dispatch**
 
 ```csharp
@@ -257,4 +273,10 @@ Within your event class add a `public IIntegrationMessage Extract(byte[] data)` 
                 return @event;
             }
         }
+```
+
+**Bypassing the Outbox - Non Transactional**
+
+```csharp
+ await client.PublishSynchronously(new OrderCreated.Event(Guid.NewGuid(), 722.99M, "USD", null));
 ```
