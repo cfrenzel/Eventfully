@@ -179,7 +179,7 @@ Eventfully plugs into your DI framework.  For Microsoft.DependencyInjection
 ```
 
 
-**Encryption for an Event Type **
+**Encryption for an Event Type**
 
 ```csharp
     ConfigureEndpoint("Events")
@@ -190,10 +190,71 @@ Eventfully plugs into your DI framework.  For Microsoft.DependencyInjection
     ;            
 ```
 
-**Encryption with AzureKeyVault**
+**Encryption with AzureKeyVault KeyProvider**
 
 ```csharp
     .UseAesEncryption("keyName", new AzureKeyVaultKeyProvider(config.GetSection("KeyVaultUrl").Value))
 ```
-              
 
+**Delayed Dispatch**
+
+```csharp
+   await client.Publish(new OrderCreated.Event(Guid.NewGuid(), 722.99M, "USD", null),
+        new MessageMetaData(delay: TimeSpan.FromSeconds(30))
+   );
+```
+
+**Publishing Raw Message Data**
+
+```csharp
+    dynamic json = new ExpandoObject();
+    json.OrderId = Guid.NewGuid();
+    json.TotalDue = 622.99M;
+    json.CurrencyCode = "USD";
+    json.ShippingAddress = new
+    {
+        Line1 = "456 Peachtree St",
+        Line2 = "Suite A",
+        City = "Atlanta",
+        StateCode = "GA",
+        Zip = "30319"
+    };
+
+    await client.Publish(
+        "Sales.OrderCreated",
+        Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(json))
+    ); 
+```
+
+**Custom Message Extractor**
+
+Within your event class add a `public IIntegrationMessage Extract(byte[] data)` method
+```csharp
+      public class Event : IntegrationEvent, IMessageExtractor
+        {
+            public override string MessageType => "Organization.Reputation";
+
+            public Guid OrganizatoinId { get; set; }
+            public string EventType { get; set; }
+            public string Details { get; set; }
+
+            private Event() { }
+            public Event(Guid id, string type, string details)
+            {
+                this.OrganizatoinId = id;
+                this.EventType = type;
+                this.Details = details;
+            }
+
+            public IIntegrationMessage Extract(byte[] data)
+            {
+                var textData = Encoding.UTF8.GetString(data);
+                dynamic json = JValue.Parse(textData);
+                Guid id = json.OrganizationId;
+                string type = json.EventType;
+                string details = json.EventDetails;
+                var @event = new OrganizationReputation.Event(id, type, details);
+                return @event;
+            }
+        }
+```
