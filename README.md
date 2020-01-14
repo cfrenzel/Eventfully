@@ -9,7 +9,7 @@ Lightweight Reliable Messaging Framework using Outbox Pattern / EFCore / AzureSe
 - Simple Configuration
 - Advanced Retry Logic for all your eventual consistency needs
 - No requirement for shared message classes between apps/services
-- EFCore support
+- EFCore SqlServer support
 - Azure Service Bus support
 - Dependency Injection support 
 - Easy to customize message deserialization
@@ -22,7 +22,7 @@ Lightweight Reliable Messaging Framework using Outbox Pattern / EFCore / AzureSe
 
 **Events**
 
-- Events implement <code>IIntegrationEvent</code>.  A base class <code>IntegrationEvent</code> is provided.  Overriding MessageType provides a unique identifier for our new Event type.   
+Events implement <code>IIntegrationEvent</code>.  A base class <code>IntegrationEvent</code> is provided.  Overriding MessageType provides a unique identifier for our new Event type.   
 ```csharp
  public class OrderCreated : IntegrationEvent
  {
@@ -34,7 +34,7 @@ Lightweight Reliable Messaging Framework using Outbox Pattern / EFCore / AzureSe
 ```
 **Event Handlers**
 
-- Event handlers implement <code>IMessageHandler&lt;Event&gt;</code>.
+Event handlers implement <code>IMessageHandler&lt;Event&gt;</code>.
   
   ```csharp
   public class OrderCreatedHandler : IMessageHandler<OrderCreated>
@@ -50,7 +50,7 @@ Lightweight Reliable Messaging Framework using Outbox Pattern / EFCore / AzureSe
   ```
 
 **Publishing Events**
-- To Publish an <code>OrderCreated</code> event only if saving the <code>Order</code> succeeds - inject an <code>IMessagingClient</code> into your constructor.  Use the <code>IMessagingClient</code> to publish the event before calling <code>DbContext.SaveChanges</code>.  This will save the event to the <code>Outbox</code> within the same transaction as the <code>Order</code>.  The framework will try (and retry) to publish the event to the configured Transport in the background.
+To Publish an <code>OrderCreated</code> event only if saving the <code>Order</code> succeeds - inject an <code>IMessagingClient</code> into your constructor.  Use the <code>IMessagingClient</code> to publish the event before calling <code>DbContext.SaveChanges</code>.  This will save the event to the <code>Outbox</code> within the same transaction as the <code>Order</code>.  The framework will try (and retry) to publish the event to the configured Transport in the background.
 
 ```csharp
   public class OrderCreator
