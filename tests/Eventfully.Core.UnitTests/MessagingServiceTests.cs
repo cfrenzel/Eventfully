@@ -111,8 +111,9 @@ namespace Eventfully.Core.UnitTests
                             A<OutboxDispatchOptions>.That.Matches(x => x.Delay == null && !x.ExpiresAtUtc.HasValue)
                             )
                         ).MustHaveHappenedOnceExactly();
-            A.CallTo(() => UnitTestFixture.MessagingService.DispatchTransientCore(A<string>.Ignored, A<byte[]>.Ignored, A<MessageMetaData>.Ignored, A<string>.Ignored))
-                .MustNotHaveHappened();
+            
+            //A.CallTo(() => UnitTestFixture.MessagingService.DispatchTransientCore(A<string>.Ignored, A<byte[]>.Ignored, A<MessageMetaData>.Ignored, A<string>.Ignored))
+            //    .MustNotHaveHappened();
         
         }
 
@@ -134,8 +135,8 @@ namespace Eventfully.Core.UnitTests
                                            && x.ExpiresAtUtc.Equals(expiresAt))
                             )
                         ).MustHaveHappenedOnceExactly();
-            A.CallTo(() => UnitTestFixture.MessagingService.DispatchTransientCore(A<string>.Ignored, A<byte[]>.Ignored, A<MessageMetaData>.Ignored, A<string>.Ignored))
-                .MustNotHaveHappened();
+            //A.CallTo(() => UnitTestFixture.MessagingService.DispatchTransientCore(A<string>.Ignored, A<byte[]>.Ignored, A<MessageMetaData>.Ignored, A<string>.Ignored))
+            //    .MustNotHaveHappened();
         }
 
         [Fact]
@@ -158,9 +159,10 @@ namespace Eventfully.Core.UnitTests
                             )
                         ).MustHaveHappenedOnceExactly();
 
-            A.CallTo(() => UnitTestFixture.MessagingService.DispatchTransientCore(A<string>.Ignored, A<byte[]>.Ignored, A<MessageMetaData>.Ignored, A<string>.Ignored))
-                .MustNotHaveHappened();
+            //A.CallTo(() => UnitTestFixture.MessagingService.DispatchTransientCore(A<string>.Ignored, A<byte[]>.Ignored, A<MessageMetaData>.Ignored, A<string>.Ignored))
+            //    .MustNotHaveHappened();
         }
+      
         [Fact]
         public void Should_convert_meta_data_to_dispatch_options_for_skip_transient()
         {
@@ -181,8 +183,8 @@ namespace Eventfully.Core.UnitTests
                             )
                         ).MustHaveHappenedOnceExactly();
 
-            A.CallTo(() => UnitTestFixture.MessagingService.DispatchTransientCore(A<string>.Ignored, A<byte[]>.Ignored, A<MessageMetaData>.Ignored, A<string>.Ignored))
-                .MustNotHaveHappened();
+            //A.CallTo(() => UnitTestFixture.MessagingService.DispatchTransientCore(A<string>.Ignored, A<byte[]>.Ignored, A<MessageMetaData>.Ignored, A<string>.Ignored))
+            //    .MustNotHaveHappened();
         }
     }
 }
