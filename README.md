@@ -12,6 +12,7 @@ Lightweight Reliable Messaging Framework using Outbox Pattern / EFCore / AzureSe
 - EFCore SqlServer support
 - Azure Service Bus support
 - Dependency Injection support 
+- Delayed Dispatch and Timeouts
 - Easy to customize message deserialization
 - Encryption support (AES)
   - Azure Key Vault support out of the box
@@ -159,7 +160,7 @@ Eventfully plugs into your DI framework.  For Microsoft.DependencyInjection
 
 ```csharp
  
- services.AddEFCoreOutbox<ApplicationDbContext>(settings =>
+   services.AddEFCoreOutbox<ApplicationDbContext>(settings =>
     {
         settings.DisableTransientDispatch = false;
         settings.MaxConcurrency = 1;
@@ -178,30 +179,21 @@ Eventfully plugs into your DI framework.  For Microsoft.DependencyInjection
 ```
 
 
-**Setup Encryption for an Event Type **
+**Encryption for an Event Type **
+
 ```csharp
-public class MessagingProfile : Profile
-    {
-        public MessagingProfile(Microsoft.Extensions.Configuration.IConfiguration config)
-        {
-            ConfigureEndpoint("Events")
-                .AsInboundOutbound()
-                .BindEvent<PaymentMethodCreated>()
-                    //see AuzureKeyVaultSample for a better way
-                    .UseAesEncryption(config.GetSection("SampleAESKey").Value)
-                    .UseLocalTransport()
-                ;
-
-            ConfigureEndpoint("Commands")
-                .AsInboundOutbound()
-                .UseLocalTransport()
-                ;
-
-            ConfigureEndpoint("Replies")
-                .AsInboundOutbound()
-                .AsReplyDefault()
-                .UseLocalTransport()
-                ;
-        }
-    }
+    ConfigureEndpoint("Events")
+    .AsInboundOutbound()
+    .BindEvent<PaymentMethodCreated>()
+        .UseAesEncryption(config.GetSection("SampleAESKey").Value)
+    .UseLocalTransport()
+    ;            
 ```
+
+**Encryption with AzureKeyVault**
+
+```csharp
+    .UseAesEncryption("keyName", new AzureKeyVaultKeyProvider(config.GetSection("KeyVaultUrl").Value))
+```
+              
+
