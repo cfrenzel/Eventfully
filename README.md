@@ -244,7 +244,7 @@ Eventfully plugs into your DI framework.  For Microsoft.DependencyInjection
 
 **Custom Message Extractor**
 
-Within your event class add a `public IIntegrationMessage Extract(byte[] data)` method
+Within your event class implement `IMessageExtractor`
 ```csharp
       public class Event : IntegrationEvent, IMessageExtractor
         {
