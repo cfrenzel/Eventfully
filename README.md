@@ -122,7 +122,7 @@ public class MessagingProfile : Profile
 
 **Configuring Transient Dispatch for EFCore and SqlServer**
 
-Often when you're sending a small number of messages within a Transaction, it makes sense for the messages to dispatch immediately after committing to the outbox.  This avoids any delays normal incurred by polling the outbox.  This feature is enabled by default and is referred to <code>TransientDispatch</code>.  Until we figure out a better way to detect a successful save in EFCore you'll need to help out by implementing `ISupportTransientDispatch` in your DbContext.  Simply publish a C# event when the changes ar saved.
+Often when you're sending a small number of messages within a Transaction, it makes sense for the messages to dispatch immediately after committing to the outbox.  This avoids any delays normally incurred by polling the outbox.  This feature is enabled by default and is referred to <code>TransientDispatch</code>.  Until we figure out a better way to detect a successful save in EFCore you'll need to help out by implementing `ISupportTransientDispatch` in your DbContext.  Simply publish a C# event when the changes ar saved.
 
 ```csharp
 public class ApplicationDbContext : DbContext, ISupportTransientDispatch
