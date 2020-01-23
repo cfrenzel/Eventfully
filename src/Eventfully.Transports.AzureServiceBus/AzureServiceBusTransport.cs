@@ -50,17 +50,20 @@ namespace Eventfully.Transports.AzureServiceBus
 
         public Task StartAsync(IEndpoint endpoint, Handler handler, CancellationToken cancellationToken = default(CancellationToken))
         {
-            //validate the connection string and store it for later lookup by entityPath and endpoint
             var connBuilder = new ServiceBusConnectionStringBuilder(endpoint.Settings.ConnectionString);
-            _endpointsByEntity.Add(new Tuple<string, string>(connBuilder.Endpoint, connBuilder.EntityPath), endpoint);
-
-            if (endpoint.IsReader)
+            var key = new Tuple<string, string>(connBuilder.Endpoint, connBuilder.EntityPath);
+            if (!_endpointsByEntity.ContainsKey(key))
             {
-                if (_messagePump == null)
-                    _messagePump = new AzureServiceBusMessagePump((m, e) => Handle(m, e), endpoint, _metaDataMapper);
-                return _messagePumpTask = _messagePump.StartAsync(cancellationToken);
-            }
+                //validate the connection string and store it for later lookup by entityPath and endpoint
+                _endpointsByEntity.Add(key, endpoint);
 
+                if (endpoint.IsReader)
+                {
+                    if (_messagePump == null)
+                        _messagePump = new AzureServiceBusMessagePump((m, e) => Handle(m, e), endpoint, _metaDataMapper);
+                    return _messagePumpTask = _messagePump.StartAsync(cancellationToken);
+                }
+            }
              return Task.CompletedTask;
         }
 
@@ -115,7 +118,7 @@ namespace Eventfully.Transports.AzureServiceBus
             if(!_parsePartialConnectionString(replyTo, out endpoint, out entityPath))
                 throw new ApplicationException("Invalid replyTo for AzureServiceBusTransport. Unable to find entity path and endpoint.  Should contain ';' seperated endpoint and entitypath");
 
-            IEndpoint endpointByEndpoint = null;
+            //IEndpoint endpointByEndpoint = null;
             IEndpoint endpointByEntity = null;          
             if (_endpointsByEntity.TryGetValue(new Tuple<string, string>(endpoint, entityPath), out endpointByEntity))
             {

@@ -98,6 +98,17 @@ class Build : NukeBuild
                 .SetPackageTags("messaging servicebus cqrs distributed azureservicebus efcore ddd microservice")
                 .SetNoDependencies(true)
                 .SetOutputDirectory(ArtifactsDirectory / "nuget"));
+
+            DotNetPack(s => s
+                .SetProject(Solution.GetProject("Eventfully.Extensions.Microsoft.DependencyInjection"))
+                .SetConfiguration(Configuration)
+                .EnableNoBuild()
+                .EnableNoRestore()
+                .SetVersion(NuGetVersionCustom)
+                .SetDescription("Lightweight Reliable Messaging Framework with Outbox")
+                .SetPackageTags("messaging servicebus cqrs distributed azureservicebus efcore ddd microservice")
+                .SetNoDependencies(true)
+                .SetOutputDirectory(ArtifactsDirectory / "nuget"));
           
             DotNetPack(s => s
                 .SetProject(Solution.GetProject("Eventfully.EFCoreOutbox"))

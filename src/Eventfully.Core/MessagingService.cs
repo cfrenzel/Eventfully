@@ -14,7 +14,7 @@ using Eventfully.Outboxing;
 namespace Eventfully
 {
 
-    public delegate Task Dispatcher(string messageTypeIdentifier, byte[] message, MessageMetaData metaData, string endpointName);
+    public delegate Task Dispatcher(string messageTypeIdentifier, byte[] message, MessageMetaData metaData, string endpointName, bool isTransient=false);
     
     public delegate Task Handler(TransportMessage transportMessage, IEndpoint endpoint);
 
@@ -188,30 +188,6 @@ namespace Eventfully
         }
 
         /// <summary>
-        /// Send a transient serialized message to an endpoint bypassing the outbound pipeline
-        /// </summary>
-        /// <param name="messageTypeIdentifier"></param>
-        /// <param name="message"></param>
-        /// <param name="metaData"></param>
-        /// <param name="endpointName"></param>
-        /// <returns></returns>
-        public Task DispatchTransientCore(string messageTypeIdentifier, byte[] message, MessageMetaData metaData, string endpointName)
-        {
-            var endpoint = endpointName != null ? MessagingMap.FindEndpointByName(endpointName) : MessagingMap.FindEndpoint(messageTypeIdentifier);
-            if (endpoint == null)
-                throw new ApplicationException($"Unable to dispatch transient message. Endpoint not found. MessageTypeIdentifier: {messageTypeIdentifier}. Endpoint: {endpointName}");
-            if (metaData != null)
-            {
-                if(metaData.SkipTransientDispatch)
-                    throw new ApplicationException($"Unable to dispatch transient message.  SkipTransient was set to True. MessageTypeIdentifier: {messageTypeIdentifier}. Endpoint: {endpointName}");
-                
-                if (metaData.DispatchDelay.HasValue && !endpoint.SupportsDelayedDispatch)
-                    throw new ApplicationException($"Unable to dispatch transient message.  Delay not supported by transport. MessageTypeIdentifier: {messageTypeIdentifier}. Endpoint: {endpointName}");
-            }
-            return DispatchCore(messageTypeIdentifier, message, metaData, endpoint);
-        }
-
-        /// <summary>
         /// Send a serialized message to an endpoint bypassing the outbound pipeline
         /// useful for services relay messages like the outbox 
         /// </summary>
@@ -220,11 +196,20 @@ namespace Eventfully
         /// <param name="metaData"></param>
         /// <param name="endpointName"></param>
         /// <returns></returns>
-        public Task DispatchCore(string messageTypeIdentifier, byte[] message, MessageMetaData metaData, string endpointName)
+        public Task DispatchCore(string messageTypeIdentifier, byte[] message, MessageMetaData metaData, string endpointName, bool isTransient = false)
         {
             var endpoint = endpointName != null ? MessagingMap.FindEndpointByName(endpointName) : MessagingMap.FindEndpoint(messageTypeIdentifier);
-            if(endpoint == null)
-                 throw new ApplicationException($"Unable to dispatch message. Endpoint not found. MessageTypeIdentifier: {messageTypeIdentifier}. Endpoint: {endpointName}");
+            if (endpoint == null)
+                throw new ApplicationException($"Unable to dispatch message. Endpoint not found. MessageTypeIdentifier: {messageTypeIdentifier}. Endpoint: {endpointName}");
+
+            if(isTransient && metaData != null)
+            {
+                if (metaData.SkipTransientDispatch)
+                    throw new ApplicationException($"Unable to dispatch transient message.  SkipTransient was set to True. MessageTypeIdentifier: {messageTypeIdentifier}. Endpoint: {endpointName}");
+
+                if (metaData.DispatchDelay.HasValue && !endpoint.SupportsDelayedDispatch)
+                    throw new ApplicationException($"Unable to dispatch transient message.  Delay not supported by transport. MessageTypeIdentifier: {messageTypeIdentifier}. Endpoint: {endpointName}");
+            }
             return DispatchCore(messageTypeIdentifier, message, metaData, endpoint);
         }
 

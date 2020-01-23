@@ -40,19 +40,20 @@ namespace Eventfully.Outboxing
 
         public async Task StartAsync(CancellationToken stoppingToken)
         {
-            _log.LogInformation("OutboxMessagePump running.");
+            if (_dispatchTimer == null)
+            {
+                _log.LogInformation("OutboxMessagePump running.");
 
-            _dispatchTimer = new Timer(ProcessMessages, null, TimeSpan.FromSeconds(15), _dispatchFrequency);
+                _dispatchTimer = new Timer(ProcessMessages, null, TimeSpan.FromSeconds(15), _dispatchFrequency);
 
-            //reset old pending messages from the outbox
-            _resetTimer = new Timer(Reset, null, TimeSpan.FromMinutes(2), _resetFrequency);
+                //reset old pending messages from the outbox
+                _resetTimer = new Timer(Reset, null, TimeSpan.FromMinutes(2), _resetFrequency);
 
-            //delete old processed messages from the outbox
-            _cleanUpTimer = new Timer(CleanUp, null, TimeSpan.FromMinutes(3), _cleanupFrequency);
+                //delete old processed messages from the outbox
+                _cleanUpTimer = new Timer(CleanUp, null, TimeSpan.FromMinutes(3), _cleanupFrequency);
 
-            await _outbox.StartAsync(_dispatcher);
-
-            //return Task.CompletedTask;
+                await _outbox.StartAsync(_dispatcher);
+            }
         }
 
         public async Task StopAsync()
