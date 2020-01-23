@@ -24,11 +24,12 @@ namespace Eventfully.Samples.ConsoleApp
         {
             _init();
             
-            await PublishOrderCreated();
+            await PublishOrderCreatedEvent();
+            await PublishOrderCreatedWithinTransactionWithOrderEntity();
             await PublishOrderCreatedWithDelay();
             await PublishOrderCreatedFromRawJson();
             await PublishEncryptedPaymentMethodCreated();
-
+          
             Console.WriteLine("Press any key to exit...");
             Console.ReadLine();
         }
@@ -73,7 +74,7 @@ namespace Eventfully.Samples.ConsoleApp
             _serviceProvider.UseMessagingHost();
         }
 
-        static async Task PublishOrderCreated()
+        static async Task PublishOrderCreatedEvent()
         {
             var client = _serviceProvider.GetService<IMessagingClient>();
             var db = _serviceProvider.GetService<ApplicationDbContext>();
@@ -85,6 +86,29 @@ namespace Eventfully.Samples.ConsoleApp
             ));
             await db.SaveChangesAsync();
         }
+
+        static async Task PublishOrderCreatedWithinTransactionWithOrderEntity()
+        {
+            using (var scope = _serviceProvider.CreateScope())
+            {
+                var client = scope.ServiceProvider.GetService<IMessagingClient>();
+                var db = scope.ServiceProvider.GetService<ApplicationDbContext>();
+                Order o = new Order()
+                {
+                     Id = MassTransit.NewId.NextGuid(),
+                     Number = "1111",
+                     CurrencyCode = "USD",
+                     Total = 522.99M,
+                };
+                db.Orders.Add(o);
+                Console.WriteLine("Publishing OrderCreated Event With Order Entity");
+                await client.Publish(new OrderCreated(o.Id, o.Total, o.CurrencyCode,
+                    new OrderCreated.Address("123 Buyer St", null, "Nashville", "TN", "37067")
+                ));
+                await db.SaveChangesAsync();
+            }
+        }
+
 
         static async Task PublishOrderCreatedWithDelay()
         {
@@ -141,9 +165,9 @@ namespace Eventfully.Samples.ConsoleApp
             await db.SaveChangesAsync();
         }
 
+       
 
-      
-            public ApplicationDbContext CreateDbContext(string[] args)
+        public ApplicationDbContext CreateDbContext(string[] args)
             {
                 _init();
                 return _serviceProvider.GetService<ApplicationDbContext>();

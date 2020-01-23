@@ -24,6 +24,9 @@ namespace Eventfully.Samples.ConsoleApp
             : base(options)
         {}
 
+        public DbSet<Order> Orders { get; set; }
+
+
 
         protected override void OnModelCreating(ModelBuilder builder)
         {
