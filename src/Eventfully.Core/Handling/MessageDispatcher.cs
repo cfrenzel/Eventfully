@@ -12,9 +12,9 @@ namespace Eventfully.Handlers
     /// </summary>
     public class MessageDispatcher : IMessageDispatcher
     {
-        private readonly IMessageHandlerFactory _handlerFactory;
+        private readonly IServiceFactory _handlerFactory;
 
-        public MessageDispatcher(IMessageHandlerFactory handlerFactory)
+        public MessageDispatcher(IServiceFactory handlerFactory)
         {
             if (handlerFactory == null) throw new ArgumentNullException(nameof(handlerFactory));
                 _handlerFactory = handlerFactory;
@@ -37,28 +37,25 @@ namespace Eventfully.Handlers
 
         private abstract class IntegrationMessageDispatcherHandler
         {
-            public abstract Task Handle(IIntegrationMessage message, MessageContext context, IMessageHandlerFactory handlerFactory);
+            public abstract Task Handle(IIntegrationMessage message, MessageContext context, IServiceFactory handlerFactory);
         }
 
 
         private class IntegrationMessageDispatcherHandler<T> : IntegrationMessageDispatcherHandler
         where T : IIntegrationMessage
         {
-            public override Task Handle(IIntegrationMessage message, MessageContext context,  IMessageHandlerFactory handlerFactory)
+            public override Task Handle(IIntegrationMessage message, MessageContext context, IServiceFactory handlerFactory)
             {
                 return HandleCore((T)message, context, handlerFactory);
             }
 
-            private static async Task HandleCore(T message, MessageContext context, IMessageHandlerFactory handlerFactory)
+            private static async Task HandleCore(T message, MessageContext context, IServiceFactory handlerFactory)
             {
                 using (var scope = handlerFactory.CreateScope())
                 {
                     var handler = scope.GetInstance<IMessageHandler<T>>();
                     var outboxSession = scope.GetInstance<IOutboxSession>();
 
-                    ///TODO: we shouldn't be getting the outbox from the handlerFactory
-                    ///and we should be setting it through the constructor
-                    ///we need merge the Factories 
                     context.OutboxSession = outboxSession;
 
                     if (context.Props != null && context.Props.HasSagaHandler)
@@ -77,11 +74,10 @@ namespace Eventfully.Handlers
                         await handler.Handle(message, context);
                 }
             }
-
-
         }
+
+
+
     }
-
-
 }
    

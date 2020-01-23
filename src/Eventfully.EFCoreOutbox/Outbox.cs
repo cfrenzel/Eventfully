@@ -10,6 +10,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
 using Eventfully.Outboxing;
+using System.Threading;
 
 namespace Eventfully.EFCoreOutbox
 {
@@ -33,6 +34,8 @@ namespace Eventfully.EFCoreOutbox
         public int MaxTries { get; set; } = 12;
         public int BatchSize { get; set; } = 50;
         public int MaxConcurrency { get; set; } = 1;
+
+        public IRetryIntervalStrategy RetryStrategy { get; set; }
     }
 
 
@@ -50,7 +53,7 @@ namespace Eventfully.EFCoreOutbox
         public readonly int MaxConcurrency  = 1;
 
 
-        public Outbox(OutboxSettings settings, IRetryIntervalStrategy retryStrategy = null)
+        public Outbox(OutboxSettings settings)
         {
             if (settings == null)
                 throw new ArgumentNullException("OutboxSettings must not be null");
@@ -59,23 +62,22 @@ namespace Eventfully.EFCoreOutbox
                 throw new InvalidOperationException("EFCore Outbox requires a connectionString.  ConnectionString can not be null");
             _dbConnection = new SqlConnectionFactory(settings.SqlConnectionString);
 
-            _retryStrategy = retryStrategy ?? new DefaultExponentialRetryStrategy();
+            _retryStrategy = settings.RetryStrategy ?? new DefaultExponentialRetryStrategy();
 
             this.MaxTries = settings.MaxTries;
             this.BatchSize = settings.BatchSize;
             this.MaxConcurrency = settings.MaxConcurrency;
             this.DisableTransientDispatch = settings.DisableTransientDispatch;
             
-            if (!this.DisableTransientDispatch)
-                _beginConsumingTransient(this.MaxConcurrency);
         }
+
 
         /// <summary>
         /// Get outbox messages for relay
         /// </summary>
         /// <param name="relayCallback"></param>
         /// <returns></returns>
-        public async Task<OutboxRelayResult> Relay(Func<string, byte[], MessageMetaData, string, Task> relayCallback)
+        public async Task<OutboxRelayResult> Relay(Dispatcher dispatcher)//Func<string, byte[], MessageMetaData, string, Task> relayCallback)
         {
             try
             {
@@ -118,7 +120,9 @@ namespace Eventfully.EFCoreOutbox
                         Parallel.ForEach(outboxMessages, new ParallelOptions { MaxDegreeOfParallelism = this.MaxConcurrency },
                             async outboxMessage =>
                             {
-                                await _relay(outboxMessage, relayCallback);
+                                //await _relay(outboxMessage, relayCallback);
+                                await _relay(outboxMessage, dispatcher);
+
                             });
                         return new OutboxRelayResult(outboxMessages != null ? outboxMessages.Count() : 0, this.BatchSize);
                     }
@@ -330,7 +334,7 @@ namespace Eventfully.EFCoreOutbox
 
         }
 
-        private async Task _relay(OutboxMessage outboxMessage, Func<string, byte[], MessageMetaData, string, Task> relayCallback)
+        private async Task _relay(OutboxMessage outboxMessage, Dispatcher dispatcher)//Func<string, byte[], MessageMetaData, string, Task> relayCallback)
         {
             if (!_isValidForRelay(outboxMessage))
                 MarkAsFailure(outboxMessage, permanent: true);
@@ -339,7 +343,8 @@ namespace Eventfully.EFCoreOutbox
                 try
                 {
                     var metaData = outboxMessage.MessageData.MetaData != null ? JsonConvert.DeserializeObject<MessageMetaData>(outboxMessage.MessageData.MetaData) : null;
-                    await relayCallback(outboxMessage.Type, outboxMessage.MessageData.Data, metaData, outboxMessage.Endpoint);
+                    //await relayCallback(outboxMessage.Type, outboxMessage.MessageData.Data, metaData, outboxMessage.Endpoint);
+                    await dispatcher.Invoke(outboxMessage.Type, outboxMessage.MessageData.Data, metaData, outboxMessage.Endpoint);
                     MarkAsComplete(outboxMessage);
                 }
                 catch (Exception ex)
@@ -374,33 +379,48 @@ namespace Eventfully.EFCoreOutbox
 
         }
 
-        /// <summary>
-        /// Block on the transient queue in the background
-        /// </summary>
-        /// <param name="maxConcurrency"></param>
-        private void _beginConsumingTransient(int maxConcurrency = 1)
-        {
-            Task.Run(() =>
-            {
-                Parallel.ForEach(_transientDispatchQueue.GetConsumingPartitioner(),
-                    new ParallelOptions { MaxDegreeOfParallelism = maxConcurrency },
-                    async outboxMessage =>
-                    {
-                        if (outboxMessage.SkipTransientDispatch)
-                            return;
-                        await _relay(outboxMessage, MessagingService.Instance.DispatchTransientCore);
-                    });
-            });
-        }
-
-
         public void DispatchTransientMessages(IEnumerable<OutboxMessage> outboxMessages)
         {
             foreach(var message in outboxMessages)
                 _transientDispatchQueue.Add(message);
         }
 
+        private CancellationTokenSource _outboxTokenSource;
+        private Task _outboxTransientTask;
 
+        public Task StartAsync(Dispatcher dispatcher)
+        {
+            if (_outboxTokenSource != null)
+                return Task.CompletedTask;
+
+            _outboxTokenSource = new CancellationTokenSource();
+            CancellationToken ct = _outboxTokenSource.Token;
+
+            if (!this.DisableTransientDispatch)
+            {
+                _outboxTransientTask = Task.Run(() =>
+                {
+                   Parallel.ForEach(_transientDispatchQueue.GetConsumingPartitioner(),
+                       new ParallelOptions { CancellationToken = ct, MaxDegreeOfParallelism = this.MaxConcurrency },
+                       async outboxMessage =>
+                       {
+                           if (outboxMessage.SkipTransientDispatch)
+                               return;
+                           await _relay(outboxMessage, dispatcher);// MessagingService.Instance.DispatchTransientCore);
+                       });
+                }, ct);
+            }
+
+            return Task.CompletedTask;
+        }
+
+        public Task StopAsync()
+        {
+            if (_outboxTokenSource != null && !_outboxTokenSource.IsCancellationRequested)
+                _outboxTokenSource.Cancel();
+
+            return _outboxTransientTask;
+        }
     }
 
 

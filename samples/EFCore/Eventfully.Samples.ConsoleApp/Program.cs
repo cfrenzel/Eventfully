@@ -11,7 +11,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
-using Eventfully.EFCoreOutbox;
+using Eventfully;
 
 namespace Eventfully.Samples.ConsoleApp
 {
@@ -49,26 +49,23 @@ namespace Eventfully.Samples.ConsoleApp
                 builder.AddConfiguration(_config.GetSection("Logging"));
                 builder.AddDebug();
                 //config.AddConsole();
-            }
-            );
+            });
 
             _services.AddDbContext<ApplicationDbContext>(options =>
                    options.UseSqlServer(
                        _config.GetConnectionString("ApplicationConnection")
             ));
 
-            _services.AddEFCoreOutbox<ApplicationDbContext>(settings =>
-            {
+            _services.AddMessaging(
+                new MessagingProfile(_config),
+                typeof(Program).GetTypeInfo().Assembly
+            )
+            .WithEFCoreOutbox<ApplicationDbContext>(settings =>
+             {
                 settings.DisableTransientDispatch = false;
                 settings.MaxConcurrency = 1;
                 settings.SqlConnectionString = _config.GetConnectionString("ApplicationConnection");
-            });
-
-            _services.AddMessaging(
-                new MessagingProfile(_config),
-                null,
-                typeof(Program).GetTypeInfo().Assembly
-            );
+             });
 
             _serviceProvider = _services.BuildServiceProvider();
 

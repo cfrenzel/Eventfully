@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace Eventfully.EFCoreOutbox
+namespace Eventfully
 {
     public interface IRetryIntervalStrategy
     {
