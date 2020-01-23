@@ -21,17 +21,17 @@ namespace Eventfully.Core.UnitTests
         
         protected static IConfigurationRoot _config;
         protected static IServiceProvider _serviceProvider;
-        public static MessagingService MessagingService;
+        //public static MessagingService MessagingService;
         public static IOutbox Outbox { get; set; }
 
         static UnitTestFixture()
         {
-            Outbox = A.Fake<IOutbox>();
-            var handlerFactory = A.Fake<IMessageHandlerFactory>();
-            MessagingService = new MessagingService(Outbox, handlerFactory);
+            //Outbox = A.Fake<IOutbox>();
+            //var handlerFactory = A.Fake<IMessageHandlerFactory>();
+            //MessagingService = new MessagingService(Outbox, handlerFactory);
         }
 
-        public static IServiceScope NewScope() => _serviceProvider.CreateScope();
+        //public static IServiceScope NewScope() => _serviceProvider.CreateScope();
 
 
     }

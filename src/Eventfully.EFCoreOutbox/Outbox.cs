@@ -334,7 +334,7 @@ namespace Eventfully.EFCoreOutbox
 
         }
 
-        private async Task _relay(OutboxMessage outboxMessage, Dispatcher dispatcher)//Func<string, byte[], MessageMetaData, string, Task> relayCallback)
+        private async Task _relay(OutboxMessage outboxMessage, Dispatcher dispatcher, bool isTransient=false)
         {
             if (!_isValidForRelay(outboxMessage))
                 MarkAsFailure(outboxMessage, permanent: true);
@@ -344,7 +344,7 @@ namespace Eventfully.EFCoreOutbox
                 {
                     var metaData = outboxMessage.MessageData.MetaData != null ? JsonConvert.DeserializeObject<MessageMetaData>(outboxMessage.MessageData.MetaData) : null;
                     //await relayCallback(outboxMessage.Type, outboxMessage.MessageData.Data, metaData, outboxMessage.Endpoint);
-                    await dispatcher.Invoke(outboxMessage.Type, outboxMessage.MessageData.Data, metaData, outboxMessage.Endpoint);
+                    await dispatcher.Invoke(outboxMessage.Type, outboxMessage.MessageData.Data, metaData, outboxMessage.Endpoint, isTransient);
                     MarkAsComplete(outboxMessage);
                 }
                 catch (Exception ex)
@@ -406,7 +406,7 @@ namespace Eventfully.EFCoreOutbox
                        {
                            if (outboxMessage.SkipTransientDispatch)
                                return;
-                           await _relay(outboxMessage, dispatcher);// MessagingService.Instance.DispatchTransientCore);
+                           await _relay(outboxMessage, dispatcher, true);// MessagingService.Instance.DispatchTransientCore);
                        });
                 }, ct);
             }

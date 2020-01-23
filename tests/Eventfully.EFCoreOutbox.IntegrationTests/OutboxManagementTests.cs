@@ -35,10 +35,10 @@ namespace Eventfully.EFCoreOutbox.IntegrationTests
         public class Fixture
         {
             public Outbox<ApplicationDbContext> Outbox;
-           
+            public MessagingService MessagingService;
+
             public Fixture()
             {
-                
                 this.Outbox = new Outbox<ApplicationDbContext>(new OutboxSettings()
                 {
                     BatchSize = 5,
@@ -46,18 +46,19 @@ namespace Eventfully.EFCoreOutbox.IntegrationTests
                     MaxTries = 3,
                     SqlConnectionString = ConnectionString,
                     DisableTransientDispatch = true,
-                    },
-                    new ConstantRetryStrategy(0.5)
-                );
+                    RetryStrategy = new ConstantRetryStrategy(0.5)
+                });
 
-                MessagingService.Instance.Outbox = this.Outbox;
+                var handlerFactory = A.Fake<IServiceFactory>();
+                this.MessagingService = new MessagingService(this.Outbox, handlerFactory);
+
             }
         }
 
 
 
         [Fact]
-        public async Task Should_reset_aged_with_status_in_progress()
+        public async Task Should_reset_aged_status_to_inprogress()
         {
             string endpointName = "OutboxManagementTests_1.1";
             
@@ -96,7 +97,7 @@ namespace Eventfully.EFCoreOutbox.IntegrationTests
 
 
         [Fact]
-        public async Task Should_cleanup_aged_with_status_processed()
+        public async Task Should_cleanup_aged_status_to_processed()
         {
             string endpointName = "OutboxManagementTests_1.2";
             

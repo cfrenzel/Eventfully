@@ -87,8 +87,11 @@ namespace Eventfully.Transports
 
         public Task StartAsync(IEndpoint endpoint, Handler handler, CancellationToken cancellationToken)
         {
-            _handler = handler;
-            _endpointsByName.Add(endpoint.Name.ToLower(), endpoint);
+            if (!_endpointsByName.ContainsKey(endpoint.Name.ToLower()))
+            {
+                _handler = handler;
+                _endpointsByName.Add(endpoint.Name.ToLower(), endpoint);
+            }
             return Task.CompletedTask;
         }
 

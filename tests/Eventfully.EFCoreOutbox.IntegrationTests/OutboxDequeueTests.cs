@@ -37,7 +37,8 @@ namespace Eventfully.EFCoreOutbox.IntegrationTests
             public Outbox<ApplicationDbContext> Outbox;
             public TestMessage Message;
             public byte[] MessageBytes;
-   
+            public MessagingService MessagingService;
+
             public Fixture()
             {
                 this.Message = new TestMessage()
@@ -60,7 +61,9 @@ namespace Eventfully.EFCoreOutbox.IntegrationTests
                     DisableTransientDispatch = true,
                 });
 
-                MessagingService.Instance.Outbox = this.Outbox;
+                  var handlerFactory = A.Fake<IServiceFactory>();
+                 this.MessagingService = new MessagingService(this.Outbox, handlerFactory);
+
             }
         }
        
@@ -77,21 +80,23 @@ namespace Eventfully.EFCoreOutbox.IntegrationTests
             await IntegrationTestFixture.CreateOutboxMessage(endpointName, "processed_4", OutboxMessageStatus.Processed);
             await IntegrationTestFixture.CreateOutboxMessage(endpointName, "failed_5", OutboxMessageStatus.Failed);
 
-            var callback = A.Fake<Func<string, byte[], MessageMetaData, string, Task>>();
+            var callback = A.Fake<Dispatcher>();
             await _fixture.Outbox.Relay(callback);
 
             A.CallTo(() => callback(
                 A<string>.Ignored,
                 A<byte[]>.Ignored,
                 A<MessageMetaData>.That.Matches(x => x.MessageId.StartsWith("ready_")),
-                A<string>.Ignored)
+                A<string>.Ignored,
+                false)
             ).MustHaveHappenedTwiceExactly();
 
             A.CallTo(() => callback(
                 A<string>.Ignored,
                 A<byte[]>.Ignored,
                 A<MessageMetaData>.That.Matches(x => !x.MessageId.StartsWith("ready_")),
-                A<string>.Ignored)
+                A<string>.Ignored,
+                false)
             ).MustNotHaveHappened();
 
             using (var scope = NewScope())
@@ -108,7 +113,7 @@ namespace Eventfully.EFCoreOutbox.IntegrationTests
                 outboxMessages[1].Status.ShouldBe((int)OutboxMessageStatus.Processed);
                 outboxMessages[1].TryCount.ShouldBe(1);
 
-                //these were never int he ready status
+                //these were never in the ready status
                 outboxMessages[2].TryCount.ShouldBe(0);
                 outboxMessages[3].TryCount.ShouldBe(0);
                 outboxMessages[4].TryCount.ShouldBe(0);
@@ -128,21 +133,24 @@ namespace Eventfully.EFCoreOutbox.IntegrationTests
             await IntegrationTestFixture.CreateOutboxMessage(endpointName, "ready_5", OutboxMessageStatus.Ready);
             await IntegrationTestFixture.CreateOutboxMessage(endpointName, "ready_6", OutboxMessageStatus.Ready);
 
-            var callback = A.Fake<Func<string, byte[], MessageMetaData, string, Task>>();
+            //var callback = A.Fake<Func<string, byte[], MessageMetaData, string, Task>>();
+            var callback = A.Fake<Dispatcher>();
             await _fixture.Outbox.Relay(callback);
 
             A.CallTo(() => callback(
                 A<string>.Ignored,
                 A<byte[]>.Ignored,
                 A<MessageMetaData>.Ignored,
-                A<string>.Ignored)
+                A<string>.Ignored,
+                false)
             ).MustHaveHappened(_fixture.Outbox.BatchSize, Times.Exactly);
 
             A.CallTo(() => callback(
                 A<string>.Ignored,
                 A<byte[]>.Ignored,
                 A<MessageMetaData>.That.Matches(x => !x.MessageId.StartsWith("ready_")),
-                A<string>.Ignored)
+                A<string>.Ignored,
+                false)
             ).MustNotHaveHappened();
         }
        
@@ -160,14 +168,16 @@ namespace Eventfully.EFCoreOutbox.IntegrationTests
             await IntegrationTestFixture.CreateOutboxMessage(endpointName, "ready_5", OutboxMessageStatus.Ready, futureDate);
             await IntegrationTestFixture.CreateOutboxMessage(endpointName, "ready_6", OutboxMessageStatus.Ready, futureDate);
 
-            var callback = A.Fake<Func<string, byte[], MessageMetaData, string, Task>>();
+            //var callback = A.Fake<Func<string, byte[], MessageMetaData, string, Task>>();
+            var callback = A.Fake<Dispatcher>();
             await _fixture.Outbox.Relay(callback);
 
             A.CallTo(() => callback(
                 A<string>.Ignored,
                 A<byte[]>.Ignored,
                 A<MessageMetaData>.Ignored,
-                A<string>.Ignored)
+                A<string>.Ignored, 
+                false)
             ).MustHaveHappened(2, Times.Exactly);
 
         }
