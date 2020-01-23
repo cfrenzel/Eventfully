@@ -11,15 +11,15 @@ namespace Eventfully
     public class Endpoint : IEndpoint
     {
         protected readonly EndpointSettings _settings;
-        protected readonly Transport _transport;
+        protected readonly ITransport _transport;
 
         public string Name { get; protected set; }
 
         public EndpointSettings Settings => _settings;
-        public Transport Transport => _transport;
+        public ITransport Transport => _transport;
 
-        public List<Type> BoundMessageTypes { get; protected set; } = new List<Type>();
-        public List<string> BoundMessageIdentifiers { get; protected set; } = new List<string>();
+        public HashSet<Type> BoundMessageTypes { get; protected set; } = new HashSet<Type>();
+        public HashSet<string> BoundMessageIdentifiers { get; protected set; } = new HashSet<string>();
 
         public bool IsReader { get; protected set; }
         public bool IsWriter { get; protected set; }
@@ -29,7 +29,7 @@ namespace Eventfully
         public Endpoint(EndpointSettings settings)
             :this(settings, null)
         {}
-        public Endpoint(EndpointSettings settings, Transport transport)
+        public Endpoint(EndpointSettings settings, ITransport transport)
         {
             _settings = settings;
             this.Name = settings.Name;
@@ -56,9 +56,14 @@ namespace Eventfully
                 _transport = settings.TransportSettings.Create();
         }
 
-        public virtual Task Start(CancellationToken cancellationToken = default(CancellationToken))
+        public virtual Task StartAsync(Handler handler, CancellationToken cancellationToken = default(CancellationToken))
         {
-            return _transport.Start(this, cancellationToken);
+            return _transport.StartAsync(this, handler, cancellationToken);
+        }
+
+        public virtual Task StopAsync()
+        {
+            return _transport.StopAsync();
         }
 
         public virtual Task Dispatch(string messageTypeIdenfifier, byte[] message, MessageMetaData metaData = null)

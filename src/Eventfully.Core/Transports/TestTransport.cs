@@ -69,7 +69,7 @@ namespace Eventfully.Transports.Testing
             //Endpoint = endpoint;
             //_dispatchCallback = dispatchCallback;
         }
-        public Transport Create(TransportSettings settings) => new TestTransport();// Endpoint, _dispatchCallback);
+        public ITransport Create(TransportSettings settings) => new TestTransport();// Endpoint, _dispatchCallback);
         
     }
 
@@ -78,15 +78,15 @@ namespace Eventfully.Transports.Testing
         public TestNullTransportFactory()//TestEndpoint endpoint, Func<string, byte[], IEndpoint, MessageMetaData, Task> dispatchCallback)
         {
         }
-        public Transport Create(TransportSettings settings) => null;// Endpoint, _dispatchCallback);
+        public ITransport Create(TransportSettings settings) => null;// Endpoint, _dispatchCallback);
 
     }
 
     public class TestNullTransportEndpoint : IEndpoint
     {
        
-        public List<string> BoundMessageIdentifiers => null;
-        public List<Type> BoundMessageTypes => null;
+        public HashSet<string> BoundMessageIdentifiers => null;
+        public HashSet<Type> BoundMessageTypes => null;
         public bool IsReader => false;
 
         public bool IsWriter => true;
@@ -97,7 +97,7 @@ namespace Eventfully.Transports.Testing
 
         public bool SupportsDelayedDispatch => false;
 
-        public Transport Transport => null;
+        public ITransport Transport => null;
 
         public Task Dispatch(string messageTypeIdenfifier, byte[] message, MessageMetaData metaData = null)
         {
@@ -109,7 +109,12 @@ namespace Eventfully.Transports.Testing
             throw new NotImplementedException();
         }
 
-        public Task Start(CancellationToken cancellationToken = default)
+        public Task StartAsync(Handler handler, CancellationToken cancellationToken = default)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task StopAsync()
         {
             throw new NotImplementedException();
         }
@@ -133,19 +138,16 @@ namespace Eventfully.Transports.Testing
             _factory = new TestNullTransportFactory();
         }
     }
-    public class TestTransport : Transport
+    public class TestTransport : ITransport
     {
-        //public TestEndpoint Endpoint;
-        //private Func<string, byte[], IEndpoint, MessageMetaData, Task> _dispatchCallBack;
-    
-
-        public override bool SupportsDelayedDispatch => false;
+        public  bool SupportsDelayedDispatch => false;
         public TestTransport() { }// TestEndpoint endpoint, Func<string, byte[], IEndpoint, MessageMetaData, Task> dispatchCallback)
-        public override Task Dispatch(string messageTypeIdentifier, byte[] message, IEndpoint endpoint, MessageMetaData metaData = null) => Task.CompletedTask;// => _dispatchCallBack(messageTypeIdentifier, message, endpoint, metaData);
-        public override IEndpoint FindEndpointForReply(MessageContext commandContext) => null;// Endpoint;
-        public override void SetReplyToForCommand(IEndpoint endpoint, IIntegrationCommand command, MessageMetaData meta) => meta.ReplyTo = null;//this.Endpoint.Name;
-        public override Task Start(IEndpoint endpoint, CancellationToken cancellationToken) => Task.CompletedTask;
-     
+        public  Task Dispatch(string messageTypeIdentifier, byte[] message, IEndpoint endpoint, MessageMetaData metaData = null) => Task.CompletedTask;// => _dispatchCallBack(messageTypeIdentifier, message, endpoint, metaData);
+        public  IEndpoint FindEndpointForReply(MessageContext commandContext) => null;// Endpoint;
+        public  void SetReplyToForCommand(IEndpoint endpoint, IIntegrationCommand command, MessageMetaData meta) => meta.ReplyTo = null;//this.Endpoint.Name;
+        public  Task StartAsync(IEndpoint endpoint, Handler handler, CancellationToken cancellationToken) => Task.CompletedTask;
+        public Task StopAsync() => Task.CompletedTask;
+       
     }
 
 }

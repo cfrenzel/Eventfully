@@ -13,6 +13,11 @@ using Eventfully.Outboxing;
 
 namespace Eventfully
 {
+
+    public delegate Task Dispatcher(string messageTypeIdentifier, byte[] message, MessageMetaData metaData, string endpointName);
+    
+    public delegate Task Handler(TransportMessage transportMessage, IEndpoint endpoint);
+
     /// <summary>
     /// A Singleton service that acts as the middleware for all configuration / 
     /// message dispatching / handling / outbox management / etc.
@@ -20,50 +25,34 @@ namespace Eventfully
     /// </summary>
     public class MessagingService
     {
-        private static MessagingService _instance = null;
-        public static MessagingService Instance { get => _instance; }
-
+    
         private readonly Dictionary<IEndpoint, InboundMessagePipeline> _endpointInboundPipeline = new Dictionary<IEndpoint, InboundMessagePipeline>();
         private readonly Dictionary<IEndpoint, OutboundMessagePipeline> _endpointOutboundPipeline = new Dictionary<IEndpoint, OutboundMessagePipeline>();
-        private readonly Random _random = new Random();
+        //private readonly Random _random = new Random();
         
         private readonly IMessageDispatcher _messageHandlerDispatcher;
-        private readonly OutboxMessagePump _outboxMessagePump;
+        private readonly IOutboxManager _outboxManager;
 
         private int _maxImmediateRetryCount = 1;// deal with transient errors before doing a more sophisticated retry with backoff
         private readonly AsyncRetryPolicy _immediateHandleRetryPolicy;
 
-        public IOutbox Outbox { get; set; }
-
-        public MessagingService(IOutbox outbox, IMessageHandlerFactory handlerFactory) 
-            :this(null, outbox, handlerFactory)
-        {}
-
-        public MessagingService(Profile profile, IOutbox outbox, IMessageHandlerFactory handlerFactory)
+        public MessagingService(IOutbox outbox, IServiceFactory factory, Profile profile = null)
         {
-            if (_instance != null)
-                throw new InvalidOperationException("MessagingService is a singleton.  Use MessagingService.Intance to access");
-            _instance = this;
+            if (outbox == null)
+                throw new InvalidOperationException("Outbox cannot be null. An Outbo is required to instantiate MessagingService");
+            _outboxManager = new OutboxManager(outbox, this.DispatchCore);
+         
+            if (factory == null)
+                throw new InvalidOperationException("IServiceFactory cannot be null. An IServiceFactory is required to instantiate MessagingService");
+            _messageHandlerDispatcher = new MessageDispatcher(factory);
 
-            if (handlerFactory == null)
-                throw new InvalidOperationException("HandlerFactory cannot be null. A HandlerFactory is required to instantiate MessagingService");
-            _messageHandlerDispatcher = new MessageDispatcher(handlerFactory);
-
-            if(outbox == null)
-                throw new InvalidOperationException("Outbox cannot be null. An Outbox is required to instantiate MessagingService");
-
-            this.Outbox = outbox;
-
-            _outboxMessagePump = new OutboxMessagePump(this);
-
-            if(profile != null)
-              _configure(profile);
+            if (profile != null)
+                _configure(profile);
 
             _immediateHandleRetryPolicy = Policy
                 .Handle<Exception>(x => !(x is NonTransientException))
                 .RetryAsync(_maxImmediateRetryCount);
         }
-
 
 
         /// <summary>
@@ -74,7 +63,6 @@ namespace Eventfully
         /// <returns></returns>
         public Task Handle(TransportMessage transportMessage, IEndpoint endpoint)
         {
-
             InboundMessagePipeline messagePipeline = null;
             if (_endpointInboundPipeline.ContainsKey(endpoint))
                 messagePipeline = _endpointInboundPipeline[endpoint];
@@ -254,27 +242,7 @@ namespace Eventfully
             return endpoint.Dispatch(messageTypeIdentifier, message, metaData);
         }
 
-        /****************** Outbox Management ***************************/
-
-        /// <summary>
-        /// Dispatch messages in the outbox that are due
-        /// </summary>
-        internal Task<OutboxRelayResult> RelayOutbox()
-        {
-            return this.Outbox.Relay(DispatchCore);
-        }
     
-        internal Task CleanUpOutbox(TimeSpan cleanupAge)
-        {
-            return Outbox.CleanUp(cleanupAge);
-        }
-
-        internal Task ResetOutbox(TimeSpan resetAge)
-        {
-            return Outbox.Reset(resetAge);
-        }
-
-   
         private void _setReplyTo(IEndpoint commandEndpoint, IIntegrationCommand command, MessageMetaData commandMeta)
         {
             if(commandMeta == null)
@@ -307,12 +275,22 @@ namespace Eventfully
         /// </summary>
         /// <param name="cancellationToken"></param>
         /// <returns></returns>
-        public async Task Start(CancellationToken cancellationToken = default(CancellationToken))
+        public async Task StartAsync(CancellationToken cancellationToken = default(CancellationToken))
+        {
+    
+            foreach (var endpoint in MessagingMap.FindAllEndpoints())
+                await endpoint.StartAsync(this.Handle, cancellationToken);
+
+            await _outboxManager.StartAsync(cancellationToken);
+
+        }
+
+        public async Task StopAsync(CancellationToken cancellationToken = default(CancellationToken))
         {
             foreach (var endpoint in MessagingMap.FindAllEndpoints())
-                await endpoint.Start(cancellationToken);
+                await endpoint.StopAsync();// cancellationToken);
 
-            await _outboxMessagePump.StartAsync(cancellationToken);
+            await _outboxManager.StopAsync();
         }
 
         /// <summary>
@@ -362,7 +340,7 @@ namespace Eventfully
         } 
 
         /// <summary>
-        /// Configure the Messaging Service with the provide profile
+        /// Configure the Messaging Service with the provided profile
         /// </summary>
         /// <param name="profile"></param>
         private void _configure(Profile profile)

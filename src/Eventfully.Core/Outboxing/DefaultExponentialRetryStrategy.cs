@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 
-namespace Eventfully.EFCoreOutbox
+namespace Eventfully
 {
     public class DefaultExponentialRetryStrategy : IRetryIntervalStrategy
     {

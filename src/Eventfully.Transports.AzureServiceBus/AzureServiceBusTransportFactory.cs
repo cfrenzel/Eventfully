@@ -6,7 +6,7 @@ namespace Eventfully.Transports.AzureServiceBus
 {
     public class AzureServiceBusTransportFactory : ITransportFactory
     {
-        public Transport Create(TransportSettings settings)
+        public ITransport Create(TransportSettings settings)
         {
             AzureServiceBusTransport transport = new AzureServiceBusTransport(settings);
             return transport;

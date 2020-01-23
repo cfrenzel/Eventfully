@@ -25,7 +25,9 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Eventfully.EFCoreOutbox.Uni
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Eventfully.EFCoreOutbox.IntegrationTests", "tests\Eventfully.EFCoreOutbox.IntegrationTests\Eventfully.EFCoreOutbox.IntegrationTests.csproj", "{E5227AD4-DFA2-474B-B81C-A036A8F00F9F}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Eventfully.Core.UnitTests", "tests\Eventfully.Core.UnitTests\Eventfully.Core.UnitTests.csproj", "{8A1EED48-E189-407E-AEBF-C403E014B594}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Eventfully.Core.UnitTests", "tests\Eventfully.Core.UnitTests\Eventfully.Core.UnitTests.csproj", "{8A1EED48-E189-407E-AEBF-C403E014B594}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Eventfully.Extensions.Microsoft.DependencyInjection", "src\Eventfully.MicrosoftDependencyInjection\Eventfully.Extensions.Microsoft.DependencyInjection.csproj", "{A8F0B2BF-B84C-4607-93DC-EEA6412ADC06}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -67,6 +69,10 @@ Global
 		{8A1EED48-E189-407E-AEBF-C403E014B594}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{8A1EED48-E189-407E-AEBF-C403E014B594}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{8A1EED48-E189-407E-AEBF-C403E014B594}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A8F0B2BF-B84C-4607-93DC-EEA6412ADC06}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A8F0B2BF-B84C-4607-93DC-EEA6412ADC06}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A8F0B2BF-B84C-4607-93DC-EEA6412ADC06}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A8F0B2BF-B84C-4607-93DC-EEA6412ADC06}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -10,23 +10,29 @@ using Eventfully.Outboxing;
 
 namespace Eventfully
 {
+
+   
     public static class DependencyInjectionExtensions
     {
-     
-        public static void AddMessaging(this IServiceCollection services, 
+        public static IServiceRegistrar AddMessaging(this IServiceCollection services,
+               Profile profile,
+               params Assembly[] messageAndHandlerAssemblies)
+        {
+            return AddMessaging(services, profile, null, messageAndHandlerAssemblies);
+        }
+
+        public static IServiceRegistrar AddMessaging(this IServiceCollection services, 
             Profile profile,
             EndpointBindings bindings,
             params Assembly[] messageAndHandlerAssemblies)
-            {
+        {
             MessagingService.InitializeTypes(messageAndHandlerAssemblies);
             if(bindings != null)
                 profile.AddBindings(bindings);
-            
-            services.AddSingleton<IMessageHandlerFactory, MicrosoftDependencyInjectionHandlerFactory>();
-            services.AddSingleton<IOutboxFactory, MicrosoftDependencyInjectionOutboxFactory>();
+
+            services.AddTransient<IServiceFactory>(x=> new MicrosoftDependencyInjectionServiceFactory(x));            
             services.AddSingleton(profile);
             services.AddSingleton<MessagingService>();
-
             services.AddTransient<IMessagingClient, MessagingClient>();
 
             //setup user message handlers
@@ -45,6 +51,7 @@ namespace Eventfully
                      ;
             });
 
+            return new ServiceRegistrar(services);
         }
         
         //public static void UseMessagingHost(this IApplicationBuilder builder)
@@ -60,7 +67,7 @@ namespace Eventfully
         {
             var messagingService = provider.GetRequiredService<MessagingService>();
             Logging.LoggerFactory = provider.GetRequiredService<ILoggerFactory>();
-            messagingService.Start().ConfigureAwait(false).GetAwaiter();
+            messagingService.StartAsync().ConfigureAwait(false).GetAwaiter();
         }
     }
 

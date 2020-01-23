@@ -5,33 +5,22 @@ using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Text;
+using Eventfully.EFCoreOutbox;
 
-namespace Eventfully.EFCoreOutbox
+namespace Eventfully
 {
-    public static class MicrosoftDependencyInjectionExtensions
+    public static class RegistrationExtensions
     {
-        public static void AddEFCoreOutbox<T>(this IServiceCollection services,
+        public static void WithEFCoreOutbox<T>(this IServiceRegistrar services,
             Action<EFCoreOutbox.OutboxSettings> config
         ) where T : DbContext
         {
-
             OutboxSettings settings = new OutboxSettings();
             if (config != null)
                 config.Invoke(settings);
-
-            services.AddSingleton(settings);
-            services.AddSingleton<Outbox<T>>();
-            
-            //register the same outbox as IOutbox
-            services.AddSingleton<IOutbox>(x =>
-                x.GetRequiredService<Outbox<T>>()
-            );
-     
-            //register the outboxsession as transient
+            services.AddSingleton<OutboxSettings>(settings);
+            services.AddSingleton<IOutbox, Outbox<T>>(true);
             services.AddTransient<IOutboxSession, OutboxSession<T>>();
-           
-
-
         }
     }
 }

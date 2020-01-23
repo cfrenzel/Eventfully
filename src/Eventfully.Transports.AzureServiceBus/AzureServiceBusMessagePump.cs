@@ -15,6 +15,7 @@ namespace Eventfully.Transports.AzureServiceBus
     public interface IMessagePump
     {
         Task StartAsync(CancellationToken stoppingToken);
+        Task StopAsync();
 
     }
 
@@ -76,8 +77,13 @@ namespace Eventfully.Transports.AzureServiceBus
 
             return Task.CompletedTask;
         }
+        public Task StopAsync()
+        {
+            ///TODO figure out how to stop the pump
+            _logger.LogInformation("AzureServiceBusMessagePump stopping. Endpoint: {EndpointName}", _endpoint.Name);
+            return Task.CompletedTask;
+        }
 
-       
 
         private async Task _handleMessage(RecoverabilityContext context, CancellationToken cancellationToken)
         {
@@ -118,12 +124,7 @@ namespace Eventfully.Transports.AzureServiceBus
         }
 
 
-    public Task StopAsync(CancellationToken stoppingToken)
-    {
-        ///TODO figure out how to stop the pump
-        _logger.LogInformation("AzureServiceBusMessagePump stopping. Endpoint: {EndpointName}", _endpoint.Name);
-        return Task.CompletedTask;
-    }
+   
 
 
 
