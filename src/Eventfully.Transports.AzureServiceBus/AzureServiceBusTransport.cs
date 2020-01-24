@@ -54,6 +54,7 @@ namespace Eventfully.Transports.AzureServiceBus
             var key = new Tuple<string, string>(connBuilder.Endpoint, connBuilder.EntityPath);
             if (!_endpointsByEntity.ContainsKey(key))
             {
+                _handler = handler;
                 //validate the connection string and store it for later lookup by entityPath and endpoint
                 _endpointsByEntity.Add(key, endpoint);
 
