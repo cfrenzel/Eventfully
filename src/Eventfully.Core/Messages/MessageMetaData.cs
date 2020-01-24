@@ -214,11 +214,19 @@ namespace Eventfully
 
         public MessageMetaData(TimeSpan? delay = null, string correlationId = null, string messageId = null, bool skipTransient = false, DateTime? expiresAtUtc = null) : this()
         {
-            this.DispatchDelay = delay;
             this.SkipTransientDispatch = skipTransient;
-            this.CorrelationId = correlationId;
-            this.MessageId = messageId;
-            this.ExpiresAtUtc = expiresAtUtc;
+
+            if (!String.IsNullOrEmpty(messageId))
+                this.MessageId = messageId;
+            
+            if (delay.HasValue)
+                this.DispatchDelay = delay;
+        
+            if(!String.IsNullOrEmpty(correlationId))
+                this.CorrelationId = correlationId;
+
+            if(expiresAtUtc.HasValue)
+                this.ExpiresAtUtc = expiresAtUtc;
         }
 
         public MessageMetaData() : this(DateTime.UtcNow){ }
