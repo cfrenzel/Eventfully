@@ -138,7 +138,7 @@ namespace Eventfully
                 return null;
             }
             set {
-                this[HeaderType.ExpiresAtUtc.Value] = value.HasValue ? value.Value.ToString("o") : null;
+                this[HeaderType.ExpiresAtUtc.Value] = (value.HasValue && value.Value != default(DateTime)) ? value.Value.ToString("o") : null;
                 if (value.HasValue && ! TimeToLive.HasValue)
                     this.TimeToLive = value.Value - DateTime.UtcNow;
             }
@@ -182,10 +182,10 @@ namespace Eventfully
             get
             {
                 if (this.ContainsKey(HeaderType.Encrypted.Value))
-                    return this[HeaderType.Encrypted.Value] == "true" ? true : false;
+                    return this[HeaderType.Encrypted.Value] == "True" ? true : false;
                 return false;
             }
-            set { this[HeaderType.Encrypted.Value] = value ? "true" : "false"; }
+            set { this[HeaderType.Encrypted.Value] = value ? "True" : "False"; }
         }
 
         [JsonIgnore]

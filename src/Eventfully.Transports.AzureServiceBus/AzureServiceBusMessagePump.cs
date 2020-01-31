@@ -19,6 +19,12 @@ namespace Eventfully.Transports.AzureServiceBus
 
     }
 
+    public class AzureServiceBusMessagePumpSettings
+    {
+        public int MaxConcurrentHandlers { get; set; } = 3;
+        public int MaxCompletionImmediateRetry { get; set; } = 1;
+    }
+
     public class AzureServiceBusMessagePump : IMessagePump
     {
         private static ILogger<AzureServiceBusMessagePump> _logger = Logging.CreateLogger<AzureServiceBusMessagePump>();
@@ -31,21 +37,30 @@ namespace Eventfully.Transports.AzureServiceBus
 
         private IMessageReceiver _receiver;
         private int _maxConcurrentHandlers = 3;
-        private int _maxCompletionRetry = 1;
+        private int _maxCompletionImmediateRetry = 1;
 
 
         public AzureServiceBusMessagePump(
-            Func<TransportMessage, IEndpoint, Task> handleMessageFunc, 
+            Func<TransportMessage, IEndpoint, Task> handleMessageFunc,
             IEndpoint endpoint,
-            AzureServiceBusMetaDataMapper metaMapper = null)
+            AzureServiceBusMetaDataMapper metaMapper = null,
+            AzureServiceBusMessagePumpSettings settings = null,
+            IAzureServiceBusRecoverabilityProvider recoverabilityProvider = null
+            )
         {
             _endpoint = endpoint;
             _handleMessageFunc = handleMessageFunc;
             _metaDataMapper = metaMapper ?? new AzureServiceBusMetaDataMapper();
-            _recoverability = new AzureServiceBusDeferRecoverabilityProvider();
+            _recoverability = recoverabilityProvider != null ? recoverabilityProvider : new AzureServiceBusDeferRecoverabilityProvider();
+            
+            if(settings != null)
+            {
+                _maxConcurrentHandlers = settings.MaxConcurrentHandlers > 0 ? settings.MaxConcurrentHandlers : _maxConcurrentHandlers;
+                _maxCompletionImmediateRetry = settings.MaxCompletionImmediateRetry > 0 ? settings.MaxCompletionImmediateRetry : _maxCompletionImmediateRetry;
+            }
             _completeImmediateRetryPolicy = Policy
               .Handle<Exception>()
-              .RetryAsync(_maxCompletionRetry);
+              .RetryAsync(_maxCompletionImmediateRetry);
         }
 
        
@@ -79,9 +94,8 @@ namespace Eventfully.Transports.AzureServiceBus
         }
         public Task StopAsync()
         {
-            ///TODO figure out how to stop the pump
             _logger.LogInformation("AzureServiceBusMessagePump stopping. Endpoint: {EndpointName}", _endpoint.Name);
-            return Task.CompletedTask;
+            return AzureServiceBusClientCache.CloseReceiver(_receiver);
         }
 
 
@@ -120,6 +134,8 @@ namespace Eventfully.Transports.AzureServiceBus
                await _completeImmediateRetryPolicy.ExecuteAsync(() =>
                    _receiver.CompleteAsync(context.Message.SystemProperties.LockToken)
                );
+                await _recoverability.OnPostHandle(context);
+
             }
         }
 
