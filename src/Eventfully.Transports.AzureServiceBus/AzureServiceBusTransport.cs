@@ -97,10 +97,11 @@ namespace Eventfully.Transports.AzureServiceBus
             DateTime? scheduleAtUtc = null;
             if (meta != null && meta.DispatchDelay.HasValue)
             {
-                var baseDate = meta.CreatedAtUtc.HasValue ? meta.CreatedAtUtc.Value : DateTime.UtcNow;
+                //var baseDate = meta.CreatedAtUtc.HasValue ? meta.CreatedAtUtc.Value : DateTime.UtcNow;
+                var baseDate = DateTime.UtcNow;
                 scheduleAtUtc = baseDate.Add(meta.DispatchDelay.Value);
             }
-            if(scheduleAtUtc.HasValue && scheduleAtUtc > DateTime.UtcNow.AddMilliseconds(400))
+            if(scheduleAtUtc.HasValue)// && scheduleAtUtc > DateTime.UtcNow.AddMilliseconds(400))
                 return sender.ScheduleMessageAsync(message, scheduleAtUtc.Value);
             return sender.SendAsync(message);
         }

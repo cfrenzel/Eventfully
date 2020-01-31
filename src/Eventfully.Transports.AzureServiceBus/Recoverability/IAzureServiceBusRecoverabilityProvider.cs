@@ -7,9 +7,11 @@ namespace Eventfully.Transports.AzureServiceBus
 {
     public interface IAzureServiceBusRecoverabilityProvider
     {
-        Task Recover(RecoverabilityContext context);
         Task<RecoverabilityContext> OnPreHandle(RecoverabilityContext context);
-     }
+        Task Recover(RecoverabilityContext context);
+        Task OnPostHandle(RecoverabilityContext context);
+
+    }
 
     public class RecoverabilityContext
     {

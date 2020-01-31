@@ -43,7 +43,15 @@ namespace Eventfully.Transports.AzureServiceBus
 
             if (!String.IsNullOrEmpty(message.MessageId))
                 meta.MessageId = message.MessageId;
-            
+
+            try
+            {
+                //message throws exception if not in a state where expiration can be calculated
+                if (message.ExpiresAtUtc != default(DateTime))
+                    meta.ExpiresAtUtc = message.ExpiresAtUtc;
+            }
+            catch { }
+
             if (message.UserProperties.ContainsKey("OriginalMessageId"))
             {
                 var messageId = (string)message.UserProperties["OriginalMessageId"];

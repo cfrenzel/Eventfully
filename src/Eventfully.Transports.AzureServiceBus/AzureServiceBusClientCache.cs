@@ -4,7 +4,9 @@ using Microsoft.Azure.ServiceBus.Primitives;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
+using System.Threading.Tasks;
 
 namespace Eventfully.Transports.AzureServiceBus
 {
@@ -47,6 +49,26 @@ namespace Eventfully.Transports.AzureServiceBus
             }
             else
                 return (IMessageReceiver)Clients[entityInfo.Item2];
+        }
+
+        public static async Task CloseReceiver(IMessageReceiver receiver)
+        {
+            if (receiver == null)
+                return;
+            var clients = Clients.Where(x => x.Value == receiver);
+            if (clients.Any())
+            {
+                foreach (var key in clients.Select(x => x.Key))
+                {
+                    IClientEntity client;
+                    if (Clients.TryRemove(key, out client))
+                        await client.CloseAsync();
+                }
+            }
+            else
+                await receiver.CloseAsync();
+            
+            return;
         }
 
         public static bool ContainsReceiver(string connectionString)
