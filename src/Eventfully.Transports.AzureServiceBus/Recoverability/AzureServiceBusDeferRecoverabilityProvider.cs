@@ -10,7 +10,7 @@ using System.Threading.Tasks;
 
 namespace Eventfully.Transports.AzureServiceBus
 {
-    
+
 
     public class AzureServiceBusDeferRecoverabilityProvider : IAzureServiceBusRecoverabilityProvider
     {
@@ -19,8 +19,10 @@ namespace Eventfully.Transports.AzureServiceBus
         private readonly AsyncRetryPolicy _receiveDeferredImmediateRetryPolicy;
         private int _maxCompletionRetry = 1;
         private int _maxReceiveRetry = 1;
+        private IRetryIntervalStrategy _retryStrategy;
 
-        public AzureServiceBusDeferRecoverabilityProvider() 
+
+        public AzureServiceBusDeferRecoverabilityProvider(IRetryIntervalStrategy retryStrategy = null)
         {
             _completeImmediateRetryPolicy = Policy
                 .Handle<Exception>()
@@ -29,10 +31,11 @@ namespace Eventfully.Transports.AzureServiceBus
             _receiveDeferredImmediateRetryPolicy = Policy
              .Handle<Exception>()
              .RetryAsync(_maxReceiveRetry);
+            _retryStrategy = retryStrategy != null ? retryStrategy : new DefaultExponentialRetryStrategy();
         }
 
 
-        public  async Task<RecoverabilityContext> OnPreHandle(RecoverabilityContext context)
+        public async Task<RecoverabilityContext> OnPreHandle(RecoverabilityContext context)
         {
             if (IsControlMessage(context.Message))//never try to reschedule the control messages themselves
                 return await _handleControlMessage(context.Message, context);
@@ -57,21 +60,19 @@ namespace Eventfully.Transports.AzureServiceBus
             }
             catch (Exception exc)
             {
-                //wrap all exceptions in a nontransient exception because retyr won't help us now 
-                ///TODO: if deferred message times out then it will throw exceptions until the control message retries expire
+                //wrap all exceptions in a nontransient exception because retry won't help us now 
+                ///TODO: if deferred message times-out then it will throw exceptions until the control message retries expire
                 ///need to use poly to retry and circuit break 
                 throw new NonTransientException("Error handling Recoverability control message", exc);
             }
         }
-
-        //public async Task Recover(Message message, int timesQueued,  Endpoint endpoint, IMessageReceiver receiver, Message controlMessage = null, string description = null,  Exception exc = null)
         public async Task Recover(RecoverabilityContext context)// int timesQueued, Endpoint endpoint, IMessageReceiver receiver, Message controlMessage = null, string description = null, Exception exc = null)
         {
             if (IsControlMessage(context.Message))//never try to reschedule the control messages themselves
                 return;
 
-            var count = context.TempData.ContainsKey("ControlMessageContent") ? 
-                ((RecoverabilityControlMessage)context.TempData["ControlMessageContent"]).RecoveryCount 
+            var count = context.TempData.ContainsKey("ControlMessageContent") ?
+                ((RecoverabilityControlMessage)context.TempData["ControlMessageContent"]).RecoveryCount
                 : 0;
             var sender = AzureServiceBusClientCache.GetSender(context.Endpoint.Settings.ConnectionString);
             var retryMessage = new RecoverabilityControlMessage(context.Message.SystemProperties.SequenceNumber, ++count);
@@ -79,46 +80,68 @@ namespace Eventfully.Transports.AzureServiceBus
             //schedule a special control message to be delivered in the future to tell the the deferred message to be retrieved and re processed
             await sender.ScheduleMessageAsync(
                 _createServiceBusMessage(retryMessage),
-                DateTime.UtcNow.Add(_getRetryInterval(retryMessage.RecoveryCount))
+                this._retryStrategy.GetNextDateUtc(retryMessage.RecoveryCount)
             );
-            //defer the current message the first time through
+
+            //defer the current message / first time through
             if (!context.TempData.ContainsKey("ControlMessage"))
             {
                 await context.Receiver.DeferAsync(context.Message.SystemProperties.LockToken);
             }
-            else //already deferred. complete the previous control message / we already sent a new one above
+            else //already deferred. complete the control message / we just sent a new one above
             {
                 await _completeImmediateRetryPolicy.ExecuteAsync(() =>
                      context.Receiver.CompleteAsync(((Message)context.TempData["ControlMessage"]).SystemProperties.LockToken)
                 );
+
+                //release the lock on the current deferred message
+                await _completeImmediateRetryPolicy.ExecuteAsync(() =>
+                    context.Receiver.AbandonAsync(context.Message.SystemProperties.LockToken)
+               );
             }
         }
 
+        public async Task OnPostHandle(RecoverabilityContext context)// int timesQueued, Endpoint endpoint, IMessageReceiver receiver, Message controlMessage = null, string description = null, Exception exc = null)
+        {
+            try
+            {
+                if (context.TempData.ContainsKey("ControlMessage"))
+                {
+                    await _completeImmediateRetryPolicy.ExecuteAsync(() =>
+                        context.Receiver.CompleteAsync(((Message)context.TempData["ControlMessage"]).SystemProperties.LockToken)
+                    );
+                }
+            }
+            catch (Exception exc)
+            {
+                ///TODO log that control message couldn't be completed
+            }
+        }
 
         public bool IsControlMessage(Message m)
         {
             if (m != null && m.Label != null)
                 return m.Label.Equals(_controlMessageLabel, StringComparison.OrdinalIgnoreCase);
             return false;
-        
+
         }
 
         private Message _createServiceBusMessage(RecoverabilityControlMessage controlMessage)
         {
             return new Message(Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(controlMessage)))
             {
-              Label = _controlMessageLabel,
+                Label = _controlMessageLabel,
             };
 
         }
-        
-        private TimeSpan _getRetryInterval(int retryCount)
-        {
-            retryCount = retryCount == 0 ? 1 : retryCount;
-            //2^3,2^4, 2^5... (8,16,32,64,128 (2min), 256 (4min), 512 (8min), 1024 (17min), 2048 (34min), 4096 (1hr) , 8192 ( 2.2hr) ....)
-            var seconds = Math.Pow(2, retryCount + 2);
-            return TimeSpan.FromSeconds(seconds);
-        }
+
+        //private TimeSpan _getRetryInterval(int retryCount)
+        //{
+        //    retryCount = retryCount == 0 ? 1 : retryCount;
+        //    //2^3,2^4, 2^5... (8,16,32,64,128 (2min), 256 (4min), 512 (8min), 1024 (17min), 2048 (34min), 4096 (1hr) , 8192 ( 2.2hr) ....)
+        //    var seconds = Math.Pow(2, retryCount + 2);
+        //    return TimeSpan.FromSeconds(seconds);
+        //}
 
         //public async Task Cancel(RecoverabilityContext context)
         //{

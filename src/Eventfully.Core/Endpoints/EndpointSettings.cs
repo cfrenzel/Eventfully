@@ -32,13 +32,13 @@ namespace Eventfully
         public string Name { get; set; }
         public string ConnectionString { get; set; }
 
-        public bool IsReader { get; protected set; }
-        public bool IsWriter { get; protected set; }
-        public bool IsEventDefault { get; protected set; }
+        public bool IsReader { get;  set; }
+        public bool IsWriter { get;  set; }
+        public bool IsEventDefault { get;  set; }
         public bool IsReplyDefault { get; set; }
 
-        public List<Type> MessageTypes { get; protected set; } = new List<Type>();
-        public List<string> MessageTypeIdentifiers { get; protected set; } = new List<string>();
+        public List<Type> MessageTypes { get;  set; } = new List<Type>();
+        public List<string> MessageTypeIdentifiers { get;  set; } = new List<string>();
 
 
         public TransportSettings TransportSettings { get; set; }

@@ -13,15 +13,15 @@ namespace Eventfully.Transports.AzureServiceBus
             {
                 foreach (var item in meta)
                 {
-                    if (HeaderType.MessageId.Equals(item.Key))
+                    if (HeaderType.MessageId.Equals(item.Key) && !String.IsNullOrEmpty(item.Value))
                         message.MessageId = item.Value;
                     else if (HeaderType.ContentType.Equals(item.Key))
                         message.ContentType = item.Value;
-                    else if (HeaderType.CorrelationId.Equals(item.Key))
+                    else if (HeaderType.CorrelationId.Equals(item.Key) && !String.IsNullOrEmpty(item.Value))
                         message.CorrelationId = item.Value;
                     else if (HeaderType.ReplyTo.Equals(item.Key))
                         message.ReplyTo = item.Value;
-                    else if (HeaderType.SessionId.Equals(item.Key))
+                    else if (HeaderType.SessionId.Equals(item.Key) && !String.IsNullOrEmpty(item.Value))
                         message.SessionId = item.Value;
                     else if (HeaderType.TimeToLive.Equals(item.Key) && meta.TimeToLive.HasValue)
                         message.TimeToLive = meta.TimeToLive.Value;                   
@@ -43,7 +43,15 @@ namespace Eventfully.Transports.AzureServiceBus
 
             if (!String.IsNullOrEmpty(message.MessageId))
                 meta.MessageId = message.MessageId;
-            
+
+            try
+            {
+                //message throws exception if not in a state where expiration can be calculated
+                if (message.ExpiresAtUtc != default(DateTime))
+                    meta.ExpiresAtUtc = message.ExpiresAtUtc;
+            }
+            catch { }
+
             if (message.UserProperties.ContainsKey("OriginalMessageId"))
             {
                 var messageId = (string)message.UserProperties["OriginalMessageId"];
@@ -65,7 +73,7 @@ namespace Eventfully.Transports.AzureServiceBus
 
             foreach(var item in message.UserProperties)
             {
-                meta[item.Key] = item.Value.ToString();
+                    meta[item.Key] =  item.Value != null ? item.Value.ToString() : null;
             }
 
             return meta;
