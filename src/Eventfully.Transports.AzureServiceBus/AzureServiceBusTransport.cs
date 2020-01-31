@@ -24,18 +24,23 @@ namespace Eventfully.Transports.AzureServiceBus
     }
 
 
-    public class AzureServiceBusTransport : Transport
+    public class AzureServiceBusTransport : ITransport
     {
         private readonly TransportSettings _settings;
         private readonly AzureServiceBusMetaDataMapper _metaDataMapper;
         private AzureServiceBusMessagePump _messagePump;
-        private Task _messagePumpTask = null;
+        private Task _messagePumpTask;
+        private Handler _handler;
 
+        /// <summary>
+        /// Tuple<string,string> (Endpoint,EntityPath) ("sb://app.servicebus.windows.net",  "assets/events")
+        /// </summary>
         private static readonly Dictionary<Tuple<string, string>, IEndpoint> _endpointsByEntity = new Dictionary<Tuple<string, string>, IEndpoint>();
         private static readonly Dictionary<string, IEndpoint> _replyToCache = new Dictionary<string, IEndpoint>();
         private static readonly Dictionary<string, string> _replyToRouteCache = new Dictionary<string, string>();
 
-        public override bool SupportsDelayedDispatch => true;
+       
+        public bool SupportsDelayedDispatch => true;
 
         public AzureServiceBusTransport(TransportSettings settings)
         {
@@ -43,29 +48,41 @@ namespace Eventfully.Transports.AzureServiceBus
             _metaDataMapper = new AzureServiceBusMetaDataMapper();
         }
 
-        public override Task Start(IEndpoint endpoint, CancellationToken cancellationToken = default(CancellationToken))
+        public Task StartAsync(IEndpoint endpoint, Handler handler, CancellationToken cancellationToken = default(CancellationToken))
         {
-            //validate the connection string and store it for later lookup by entityPath and endpoint
             var connBuilder = new ServiceBusConnectionStringBuilder(endpoint.Settings.ConnectionString);
-            _endpointsByEntity.Add(new Tuple<string, string>(connBuilder.Endpoint, connBuilder.EntityPath), endpoint);
-
-            if (endpoint.IsReader)
+            var key = new Tuple<string, string>(connBuilder.Endpoint, connBuilder.EntityPath);
+            if (!_endpointsByEntity.ContainsKey(key))
             {
-                if (_messagePump == null)
-                    _messagePump = new AzureServiceBusMessagePump((m, e) => Handle(m, e), endpoint, _metaDataMapper);
-                return _messagePumpTask = _messagePump.StartAsync(cancellationToken);
-            }
+                _handler = handler;
+                //validate the connection string and store it for later lookup by entityPath and endpoint
+                _endpointsByEntity.Add(key, endpoint);
 
+                if (endpoint.IsReader)
+                {
+                    if (_messagePump == null)
+                        _messagePump = new AzureServiceBusMessagePump((m, e) => Handle(m, e), endpoint, _metaDataMapper);
+                    return _messagePumpTask = _messagePump.StartAsync(cancellationToken);
+                }
+            }
              return Task.CompletedTask;
+        }
+
+        public Task StopAsync()
+        {
+            if (_messagePump != null)
+                return _messagePump.StopAsync();
+
+            return Task.CompletedTask;
         }
 
         public Task Handle(TransportMessage transportMessage, IEndpoint endpoint)
         {
-            ///TODO: inject the service in if possible
-            return MessagingService.Instance.Handle(transportMessage, endpoint);
+            return _handler.Invoke(transportMessage, endpoint);
+            //return MessagingService.Instance.Handle(transportMessage, endpoint);
         }
 
-        public override Task Dispatch(string messageTypeIdenfifier, byte[] message, IEndpoint endpoint, MessageMetaData metaData = null)
+        public Task Dispatch(string messageTypeIdenfifier, byte[] message, IEndpoint endpoint, MessageMetaData metaData = null)
         {
             return _dispatch(messageTypeIdenfifier, message, endpoint, metaData);
         }
@@ -80,15 +97,16 @@ namespace Eventfully.Transports.AzureServiceBus
             DateTime? scheduleAtUtc = null;
             if (meta != null && meta.DispatchDelay.HasValue)
             {
-                var baseDate = meta.CreatedAtUtc.HasValue ? meta.CreatedAtUtc.Value : DateTime.UtcNow;
+                //var baseDate = meta.CreatedAtUtc.HasValue ? meta.CreatedAtUtc.Value : DateTime.UtcNow;
+                var baseDate = DateTime.UtcNow;
                 scheduleAtUtc = baseDate.Add(meta.DispatchDelay.Value);
             }
-            if(scheduleAtUtc.HasValue && scheduleAtUtc > DateTime.UtcNow.AddMilliseconds(400))
+            if(scheduleAtUtc.HasValue)// && scheduleAtUtc > DateTime.UtcNow.AddMilliseconds(400))
                 return sender.ScheduleMessageAsync(message, scheduleAtUtc.Value);
             return sender.SendAsync(message);
         }
 
-        public override IEndpoint FindEndpointForReply(MessageContext commandContext)
+        public IEndpoint FindEndpointForReply(MessageContext commandContext)
         {
             var replyTo = commandContext.MetaData != null ? commandContext.MetaData.ReplyTo : null;
             if (String.IsNullOrEmpty(replyTo))
@@ -102,33 +120,33 @@ namespace Eventfully.Transports.AzureServiceBus
             if(!_parsePartialConnectionString(replyTo, out endpoint, out entityPath))
                 throw new ApplicationException("Invalid replyTo for AzureServiceBusTransport. Unable to find entity path and endpoint.  Should contain ';' seperated endpoint and entitypath");
 
-            IEndpoint endpointByEndpoint = null;
+            //IEndpoint endpointByEndpoint = null;
             IEndpoint endpointByEntity = null;          
             if (_endpointsByEntity.TryGetValue(new Tuple<string, string>(endpoint, entityPath), out endpointByEntity))
             {
                 _replyToCache.Add(replyTo, endpointByEntity);
                 return endpointByEntity;
             }
-            //connection string for the endpoint that will work with any entity
-            else if (_endpointsByEntity.TryGetValue(new Tuple<string, string>(endpoint, null), out endpointByEndpoint))
-            {
-                var newConn = new ServiceBusConnectionStringBuilder(endpointByEndpoint.Settings.ConnectionString);
-                newConn.EntityPath = entityPath;
-                var newEndpoint =  new Endpoint(
-                    new EndpointSettings($"Computed-{entityPath}", newConn.GetEntityConnectionString())
-                    {
-                        TransportSettings = this._settings
-                    }.AsOutbound()
-                );
-                _replyToCache.Add(replyTo, newEndpoint);
-                MessagingService.Instance.AddEndpoint(newEndpoint);
-                return newEndpoint;
-            }
+            ////connection string for the endpoint that will work with any entity
+            //else if (_endpointsByEntity.TryGetValue(new Tuple<string, string>(endpoint, null), out endpointByEndpoint))
+            //{
+            //    var newConn = new ServiceBusConnectionStringBuilder(endpointByEndpoint.Settings.ConnectionString);
+            //    newConn.EntityPath = entityPath;
+            //    var newEndpoint =  new Endpoint(
+            //        new EndpointSettings($"Computed-{entityPath}", newConn.GetEntityConnectionString())
+            //        {
+            //            TransportSettings = this._settings
+            //        }.AsOutbound()
+            //    );
+            //    _replyToCache.Add(replyTo, newEndpoint);
+            //    MessagingService.Instance.AddEndpoint(newEndpoint);
+            //    return newEndpoint;
+            //}
             return null;
         }
 
 
-        public override void SetReplyToForCommand(IEndpoint endpoint, IIntegrationCommand command, MessageMetaData meta)
+        public void SetReplyToForCommand(IEndpoint endpoint, IIntegrationCommand command, MessageMetaData meta)
         {
             meta = meta ?? new MessageMetaData();
             //if (meta == null)
@@ -165,7 +183,7 @@ namespace Eventfully.Transports.AzureServiceBus
             return !String.IsNullOrEmpty(endpoint) && !String.IsNullOrEmpty(entityPath);
         }
 
-        
+     
     }
 
 }

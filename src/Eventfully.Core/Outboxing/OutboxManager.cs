@@ -7,16 +7,20 @@ using Microsoft.Extensions.Logging;
 
 namespace Eventfully.Outboxing
 {
-   
-    public class OutboxMessagePump : IDisposable
-    {
-        private static ILogger<OutboxMessagePump> _log = Logging.CreateLogger<OutboxMessagePump>();
 
-        private readonly  MessagingService _messagingService;
-       
+    public class OutboxManager : IOutboxManager
+    {
+        private static ILogger<OutboxManager> _log = Logging.CreateLogger<OutboxManager>();
+
+        //private readonly  MessagingService _messagingService;
+        private readonly IOutbox _outbox;
+        //private readonly Func<string, byte[], MessageMetaData, string, Task> _relayCallback;
+
+        private Dispatcher _dispatcher;
+        
         private Timer _dispatchTimer;
         private TimeSpan _dispatchFrequency = TimeSpan.FromSeconds(3);//time between processing outbox
-       
+
         private Timer _cleanUpTimer;
         private TimeSpan _cleanupFrequency = TimeSpan.FromHours(1);//time between running cleanup on outbox
 
@@ -27,25 +31,41 @@ namespace Eventfully.Outboxing
         private TimeSpan _resetAge = TimeSpan.FromMinutes(1);
 
         private readonly int _maxConcurrency;
-        public OutboxMessagePump(MessagingService messagingService, int maxConcurrency = 1)
+        public OutboxManager(IOutbox outbox, Dispatcher dispatcher,  int maxConcurrency = 1)
         {
-            _messagingService = messagingService;
+            _dispatcher = dispatcher;
+            _outbox = outbox;
             _maxConcurrency = maxConcurrency;
         }
-      
-        public Task StartAsync(CancellationToken stoppingToken)
+
+        public async Task StartAsync(CancellationToken stoppingToken)
         {
-            _log.LogInformation("OutboxMessagePump running.");
+            if (_dispatchTimer == null)
+            {
+                _log.LogInformation("OutboxMessagePump running.");
 
-            _dispatchTimer = new Timer(ProcessMessages, null, TimeSpan.FromSeconds(15), _dispatchFrequency);
+                _dispatchTimer = new Timer(ProcessMessages, null, TimeSpan.FromSeconds(15), _dispatchFrequency);
 
-            //reset old pending events from the outbox
-            _resetTimer = new Timer(Reset, null, TimeSpan.FromMinutes(2), _resetFrequency);
+                //reset old pending messages from the outbox
+                _resetTimer = new Timer(Reset, null, TimeSpan.FromMinutes(2), _resetFrequency);
 
-            //delete old events from the outbox
-            _cleanUpTimer = new Timer(CleanUp, null, TimeSpan.FromMinutes(3), _cleanupFrequency);
+                //delete old processed messages from the outbox
+                _cleanUpTimer = new Timer(CleanUp, null, TimeSpan.FromMinutes(3), _cleanupFrequency);
 
-            return Task.CompletedTask;
+                await _outbox.StartAsync(_dispatcher);
+            }
+        }
+
+        public async Task StopAsync()
+        {
+            _dispatchTimer?.Change(Timeout.Infinite, 0);
+            _cleanUpTimer?.Change(Timeout.Infinite, 0);
+            _resetTimer?.Change(Timeout.Infinite, 0);
+            _log.LogInformation("OutboxManager stopping.");
+
+            await _outbox.StopAsync();
+
+            //return Task.CompletedTask;
         }
 
         private async void ProcessMessages(object state)
@@ -55,9 +75,10 @@ namespace Eventfully.Outboxing
             {
                 //stop and restart after we process
                 _dispatchTimer.Change(Timeout.Infinite, Timeout.Infinite);
-              
-                var res = await _messagingService.RelayOutbox();
-                if (res.MessageCount >= res.MessageCount)
+
+                //var res = await _messagingService.RelayOutbox();
+                var res = await _outbox.Relay(_dispatcher);
+                if (res.MessageCount >= res.MaxMessageCount)
                     dispatchDelay = TimeSpan.FromSeconds(0);
 
                 _log.LogDebug("OutboxMessagePumpService is processing.");
@@ -76,7 +97,8 @@ namespace Eventfully.Outboxing
         {
             try
             {
-                await _messagingService.ResetOutbox(_resetAge);
+                //await _messagingService.ResetOutbox(_resetAge);
+                await _outbox.Reset(_resetAge);
                 _log.LogDebug("OutboxMessagePumpService is Resetting. ExecutionCount");
 
             }
@@ -90,7 +112,8 @@ namespace Eventfully.Outboxing
         {
             try
             {
-                await _messagingService.CleanUpOutbox(_cleanupAge);
+                //await _messagingService.CleanUpOutbox(_cleanupAge);
+                await _outbox.CleanUp(_cleanupAge);
                 _log.LogDebug("OutboxMessagePump is Cleaning Up.");
             }
             catch (Exception exc)
@@ -99,14 +122,7 @@ namespace Eventfully.Outboxing
             }
         }
 
-        public Task StopAsync(CancellationToken stoppingToken)
-        {
-            _dispatchTimer?.Change(Timeout.Infinite, 0);
-            _cleanUpTimer?.Change(Timeout.Infinite, 0);
-            _resetTimer?.Change(Timeout.Infinite, 0);
-            _log.LogInformation("OutboxMessagePump stopping.");
-            return Task.CompletedTask;
-        }
+     
 
         public void Dispose()
         {

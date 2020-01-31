@@ -30,12 +30,14 @@ namespace Eventfully.EFCoreOutbox.IntegrationTests
 
         public class Fixture
         {
+            public MessagingService MessagingService;
+
             public Outbox<ApplicationDbContext> Outbox;
             public TestMessage Message;
             public byte[] MessageBytes;
             public MessageMetaData MessageMetaData;
             public string SerializedMessageMetaData;
-            
+
             public Fixture()
             {
                 this.Message = new TestMessage()
@@ -60,7 +62,8 @@ namespace Eventfully.EFCoreOutbox.IntegrationTests
                     DisableTransientDispatch = false,
                 });
 
-                MessagingService.Instance.Outbox = this.Outbox;
+                var handlerFactory = A.Fake<IServiceFactory>();
+                this.MessagingService = new MessagingService(this.Outbox, handlerFactory);
             }
         }
 
@@ -75,7 +78,8 @@ namespace Eventfully.EFCoreOutbox.IntegrationTests
                 var endpoint = A.Fake<TestOutboundEndpoint>(x => x.WithArgumentsForConstructor(() =>
                     new TestOutboundEndpoint("TransientDispatchTestEndpoint1.1", null, null)                   )
                 );
-                MessagingService.Instance.AddEndpoint(endpoint);
+                _fixture.MessagingService.AddEndpoint(endpoint);
+                await _fixture.MessagingService.StartAsync();
 
                 await outboxSession.Dispatch(_fixture.Message.MessageType, _fixture.MessageBytes, null, endpoint, new OutboxDispatchOptions());
                 A.CallTo(() => endpoint.Dispatch(_fixture.Message.MessageType, _fixture.MessageBytes, null)).MustNotHaveHappened();
@@ -130,7 +134,9 @@ namespace Eventfully.EFCoreOutbox.IntegrationTests
                 var endpoint = A.Fake<TestOutboundEndpoint>(x => x.WithArgumentsForConstructor(() =>
                     new TestOutboundEndpoint("TransientDispatchTestEndpoint1.2", null, null))
                 );
-                MessagingService.Instance.AddEndpoint(endpoint);
+                _fixture.MessagingService.AddEndpoint(endpoint);
+                await _fixture.MessagingService.StartAsync();
+
                 A.CallTo(() => endpoint.Dispatch(_fixture.Message.MessageType, _fixture.MessageBytes, null))
                     .Throws(new ApplicationException("Test:Forced failure of transient dispatch"));
 
@@ -162,7 +168,8 @@ namespace Eventfully.EFCoreOutbox.IntegrationTests
                 var endpoint = A.Fake<TestOutboundEndpoint>(x => x.WithArgumentsForConstructor(() =>
                     new TestOutboundEndpoint("TransientDispatchTestEndpoint1.3", null, null))
                 );
-                MessagingService.Instance.AddEndpoint(endpoint);
+                _fixture.MessagingService.AddEndpoint(endpoint);
+                await _fixture.MessagingService.StartAsync();
 
                 await outboxSession.Dispatch(_fixture.Message.MessageType, _fixture.MessageBytes, null, endpoint, new OutboxDispatchOptions()
                 {
@@ -202,7 +209,8 @@ namespace Eventfully.EFCoreOutbox.IntegrationTests
                 var endpoint = A.Fake<TestOutboundEndpoint>(x => x.WithArgumentsForConstructor(() =>
                     new TestOutboundEndpoint("TransientDispatchTestEndpoint1.4", null, null))
                 );
-                MessagingService.Instance.AddEndpoint(endpoint);
+                _fixture.MessagingService.AddEndpoint(endpoint);
+                await _fixture.MessagingService.StartAsync();
 
                 ///the configuration gets a little funky here because in normal use the 
                 ///end user uses metaData to configure delay while behind the scenes meta is

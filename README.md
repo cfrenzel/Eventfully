@@ -126,8 +126,18 @@ Often when you're sending a small number of messages within a Transaction, it ma
 
 ```csharp
 public class ApplicationDbContext : DbContext, ISupportTransientDispatch
-    {     
-        public event EventHandler ChangesPersisted;
+{     
+    public event EventHandler ChangesPersisted;
+```
+
+```csharp
+ protected override void OnModelCreating(ModelBuilder builder)
+ {
+     base.OnModelCreating(builder);
+
+     /*** Add Outbox Entities ***/
+     builder.AddEFCoreOutbox();
+ }
 ```
 
 ```csharp
@@ -155,26 +165,23 @@ public class ApplicationDbContext : DbContext, ISupportTransientDispatch
 
 Eventfully plugs into your DI framework.  For Microsoft.DependencyInjection 
 
-- Add an Outbox `services.AddEFCoreOutbox`
 - `services.AddMessaging`
-- `_serviceProvider.UseMessagingHost()` - to enable processing of `Inbound` endpoints and `MessageBox`
+- `.WithEFCoreOutbox<ApplicationDbContext>` - configure an outbox
+- `_serviceProvider.UseMessagingHost()` - to enable processing of `Inbound` endpoints and `Outbox`
 
 ```csharp
- 
-   services.AddEFCoreOutbox<ApplicationDbContext>(settings =>
-    {
+     _services.AddMessaging(
+         new MessagingProfile(_config),
+         typeof(Program).GetTypeInfo().Assembly
+      )
+      .WithEFCoreOutbox<ApplicationDbContext>(settings =>
+      {
         settings.DisableTransientDispatch = false;
         settings.MaxConcurrency = 1;
         settings.SqlConnectionString = _config.GetConnectionString("ApplicationConnection");
-    });
-
-    services.AddMessaging(
-        new MessagingProfile(_config),
-        null,
-        typeof(OrderCreated).GetTypeInfo().Assembly
-    );
-
-    //enable receiving messages from the configured endpoints
+      });
+    
+    //start messaging processing from outbox and inbound endpoints
     _serviceProvider = services.BuildServiceProvider();
     _serviceProvider.UseMessagingHost();
 ```

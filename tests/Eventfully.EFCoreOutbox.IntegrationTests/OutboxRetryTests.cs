@@ -37,7 +37,8 @@ namespace Eventfully.EFCoreOutbox.IntegrationTests
             public Outbox<ApplicationDbContext> Outbox;
             public TestMessage Message;
             public byte[] MessageBytes;
-   
+            public MessagingService MessagingService;
+
             public Fixture()
             {
                 this.Message = new TestMessage()
@@ -58,11 +59,11 @@ namespace Eventfully.EFCoreOutbox.IntegrationTests
                     MaxTries = 3,
                     SqlConnectionString = ConnectionString,
                     DisableTransientDispatch = true,
-                    },
-                    new ConstantRetryStrategy(0.5)
-                );
+                    RetryStrategy = new ConstantRetryStrategy(0.5)
+                });
 
-                MessagingService.Instance.Outbox = this.Outbox;
+                var handlerFactory = A.Fake<IServiceFactory>();
+                this.MessagingService = new MessagingService(this.Outbox, handlerFactory);
             }
         }
 
@@ -76,12 +77,13 @@ namespace Eventfully.EFCoreOutbox.IntegrationTests
             var message = await IntegrationTestFixture.CreateOutboxMessage(endpointName, "retry_1", OutboxMessageStatus.Ready);
             var lastPriorityDate = message.PriorityDateUtc;
 
-            var callback = A.Fake<Func<string, byte[], MessageMetaData, string, Task>>();
-            A.CallTo(() => callback(A<string>.Ignored, A<byte[]>.Ignored, A<MessageMetaData>.Ignored, A<string>.Ignored))
+            var callback = A.Fake<Dispatcher>();
+
+            A.CallTo(() => callback(A<string>.Ignored, A<byte[]>.Ignored, A<MessageMetaData>.Ignored, A<string>.Ignored, false))
                 .Throws(new ApplicationException("Test: foreced vailure in outbox relay"));
             await _fixture.Outbox.Relay(callback);
 
-            A.CallTo(() => callback(A<string>.Ignored, A<byte[]>.Ignored,A<MessageMetaData>.That.Matches(x => x.MessageId.StartsWith("retry_")),A<string>.Ignored))
+            A.CallTo(() => callback(A<string>.Ignored, A<byte[]>.Ignored,A<MessageMetaData>.That.Matches(x => x.MessageId.StartsWith("retry_")),A<string>.Ignored, false))
                 .MustHaveHappenedOnceExactly();
 
             using (var scope = NewScope())
@@ -97,12 +99,13 @@ namespace Eventfully.EFCoreOutbox.IntegrationTests
             }
 
             await Task.Delay(500);//wait the retry interval
-            callback = A.Fake<Func<string, byte[], MessageMetaData, string, Task>>();
-            A.CallTo(() => callback(A<string>.Ignored, A<byte[]>.Ignored, A<MessageMetaData>.Ignored, A<string>.Ignored))
+            //callback = A.Fake<Func<string, byte[], MessageMetaData, string, Task>>();
+            callback = A.Fake<Dispatcher>();
+            A.CallTo(() => callback(A<string>.Ignored, A<byte[]>.Ignored, A<MessageMetaData>.Ignored, A<string>.Ignored, false))
             .Throws(new ApplicationException("Test: foreced vailure in outbox relay"));
 
             await _fixture.Outbox.Relay(callback);
-            A.CallTo(() => callback(A<string>.Ignored, A<byte[]>.Ignored, A<MessageMetaData>.That.Matches(x => x.MessageId.StartsWith("retry_")), A<string>.Ignored))
+            A.CallTo(() => callback(A<string>.Ignored, A<byte[]>.Ignored, A<MessageMetaData>.That.Matches(x => x.MessageId.StartsWith("retry_")), A<string>.Ignored, false))
                .MustHaveHappenedOnceExactly();
             using (var scope = NewScope())
             {
@@ -116,12 +119,13 @@ namespace Eventfully.EFCoreOutbox.IntegrationTests
             }
 
             await Task.Delay(500);//wait the retry interval
-            callback = A.Fake<Func<string, byte[], MessageMetaData, string, Task>>();
-            A.CallTo(() => callback(A<string>.Ignored, A<byte[]>.Ignored, A<MessageMetaData>.Ignored, A<string>.Ignored))
+            //callback = A.Fake<Func<string, byte[], MessageMetaData, string, Task>>();
+            callback = A.Fake<Dispatcher>();
+            A.CallTo(() => callback(A<string>.Ignored, A<byte[]>.Ignored, A<MessageMetaData>.Ignored, A<string>.Ignored, false))
                 .Throws(new ApplicationException("Test: foreced vailure in outbox relay"));
             await _fixture.Outbox.Relay(callback);
 
-            A.CallTo(() => callback(A<string>.Ignored, A<byte[]>.Ignored, A<MessageMetaData>.That.Matches(x => x.MessageId.StartsWith("retry_")), A<string>.Ignored))
+            A.CallTo(() => callback(A<string>.Ignored, A<byte[]>.Ignored, A<MessageMetaData>.That.Matches(x => x.MessageId.StartsWith("retry_")), A<string>.Ignored, false))
                 .MustHaveHappenedOnceExactly();
 
             using (var scope = NewScope())

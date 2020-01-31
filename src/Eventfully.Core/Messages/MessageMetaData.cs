@@ -138,7 +138,7 @@ namespace Eventfully
                 return null;
             }
             set {
-                this[HeaderType.ExpiresAtUtc.Value] = value.HasValue ? value.Value.ToString("o") : null;
+                this[HeaderType.ExpiresAtUtc.Value] = (value.HasValue && value.Value != default(DateTime)) ? value.Value.ToString("o") : null;
                 if (value.HasValue && ! TimeToLive.HasValue)
                     this.TimeToLive = value.Value - DateTime.UtcNow;
             }
@@ -182,10 +182,10 @@ namespace Eventfully
             get
             {
                 if (this.ContainsKey(HeaderType.Encrypted.Value))
-                    return this[HeaderType.Encrypted.Value] == "true" ? true : false;
+                    return this[HeaderType.Encrypted.Value] == "True" ? true : false;
                 return false;
             }
-            set { this[HeaderType.Encrypted.Value] = value ? "true" : "false"; }
+            set { this[HeaderType.Encrypted.Value] = value ? "True" : "False"; }
         }
 
         [JsonIgnore]
@@ -214,11 +214,19 @@ namespace Eventfully
 
         public MessageMetaData(TimeSpan? delay = null, string correlationId = null, string messageId = null, bool skipTransient = false, DateTime? expiresAtUtc = null) : this()
         {
-            this.DispatchDelay = delay;
             this.SkipTransientDispatch = skipTransient;
-            this.CorrelationId = correlationId;
-            this.MessageId = messageId;
-            this.ExpiresAtUtc = expiresAtUtc;
+
+            if (!String.IsNullOrEmpty(messageId))
+                this.MessageId = messageId;
+            
+            if (delay.HasValue)
+                this.DispatchDelay = delay;
+        
+            if(!String.IsNullOrEmpty(correlationId))
+                this.CorrelationId = correlationId;
+
+            if(expiresAtUtc.HasValue)
+                this.ExpiresAtUtc = expiresAtUtc;
         }
 
         public MessageMetaData() : this(DateTime.UtcNow){ }

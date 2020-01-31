@@ -14,7 +14,7 @@ namespace Eventfully.Outboxing
         /// </summary>
         /// <param name="relayCallback">method provided to relay the messages</param>
         /// <returns></returns>
-        Task<OutboxRelayResult> Relay(Func<string, byte[], MessageMetaData, string, Task> relayCallback);
+        Task<OutboxRelayResult> Relay(Dispatcher dispatcher);// Func<string, byte[], MessageMetaData, string, Task> relayCallback);
 
         /// <summary>
         /// Do any periodic cleanup necessary on the inbox 
@@ -32,5 +32,15 @@ namespace Eventfully.Outboxing
         /// <returns></returns>
         Task Reset(TimeSpan resetAge);
 
+        Task StartAsync(Dispatcher dispatcher);
+        
+        Task StopAsync();
     }
+
+    //public interface IOutboxWithTransient : IOutbox
+    //{
+    //   Task<OutboxRelayResult> Relay(Func<string, byte[], MessageMetaData, string, Task> relayCallback);
+     
+    //}
+
 }

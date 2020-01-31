@@ -1,11 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
+using Eventfully;
 
 namespace Eventfully.Transports
 {
     public interface ITransportFactory
     {
-        Transport Create(TransportSettings settings);
+        ITransport Create(TransportSettings settings);
     }
 }

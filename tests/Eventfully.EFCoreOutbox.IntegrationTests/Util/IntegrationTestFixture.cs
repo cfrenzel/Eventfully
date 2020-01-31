@@ -66,17 +66,17 @@ namespace Eventfully.EFCoreOutbox.IntegrationTests
             ///Setup internal logging for eventfully
             Logging.LoggerFactory = _serviceProvider.GetRequiredService<ILoggerFactory>();
             
-            var outbox = new Outbox<ApplicationDbContext>(new OutboxSettings()
-            {
-                BatchSize = 10,
-                MaxConcurrency = 1,
-                MaxTries = 10,
-                SqlConnectionString = ConnectionString,
-                DisableTransientDispatch = true,
-            });
+            //var outbox = new Outbox<ApplicationDbContext>(new OutboxSettings()
+            //{
+            //    BatchSize = 10,
+            //    MaxConcurrency = 1,
+            //    MaxTries = 10,
+            //    SqlConnectionString = ConnectionString,
+            //    DisableTransientDispatch = true,
+            //});
 
-            var handlerFactory = A.Fake<IMessageHandlerFactory>();
-            var messagingService = new MessagingService(null, outbox, handlerFactory);
+            //var handlerFactory = A.Fake<IServiceFactory>();
+            //var messagingService = new MessagingService(outbox, handlerFactory);
 
             Message = new TestMessage()
             {

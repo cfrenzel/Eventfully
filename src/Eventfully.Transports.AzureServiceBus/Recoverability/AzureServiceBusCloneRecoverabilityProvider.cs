@@ -54,6 +54,12 @@ namespace Eventfully.Transports.AzureServiceBus
             );
         }
 
+        public  Task OnPostHandle(RecoverabilityContext context)// int timesQueued, Endpoint endpoint, IMessageReceiver receiver, Message controlMessage = null, string description = null, Exception exc = null)
+        {
+            //no cleanup to do here
+            return Task.CompletedTask;
+        }
+
         private async Task<bool> _handleMaxRetry(int recoveryCount, Message message, RecoverabilityContext context)
         {
             if (message.SystemProperties.DeliveryCount > 1 || recoveryCount > 9)

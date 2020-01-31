@@ -10,6 +10,7 @@ using System.Threading.Tasks;
 using System.Linq;
 using Microsoft.EntityFrameworkCore;
 using Eventfully.Transports.Testing;
+using FakeItEasy;
 
 namespace Eventfully.EFCoreOutbox.IntegrationTests
 {
@@ -28,7 +29,8 @@ namespace Eventfully.EFCoreOutbox.IntegrationTests
             public byte[] MessageBytes;
             public MessageMetaData MessageMetaData;
             public string SerializedMessageMetaData;
-        
+            public MessagingService MessagingService;
+
             public Fixture()
             {
                 this.Message = new TestMessage()
@@ -53,7 +55,8 @@ namespace Eventfully.EFCoreOutbox.IntegrationTests
                     DisableTransientDispatch = true,
                 });
 
-                MessagingService.Instance.Outbox = this.Outbox;
+                var handlerFactory = A.Fake<IServiceFactory>();
+                this.MessagingService = new MessagingService(this.Outbox, handlerFactory);
             }
         }
 
