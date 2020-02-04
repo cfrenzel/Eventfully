@@ -17,7 +17,7 @@ namespace Eventfully.Transports.AzureServiceBus
         private static readonly string _controlMessageLabel = "ControlMessage.Recover";
         private readonly AsyncRetryPolicy _completeImmediateRetryPolicy;
         private readonly AsyncRetryPolicy _receiveDeferredImmediateRetryPolicy;
-        private int _maxCompletionRetry = 1;
+        private int _maxCompletionImmediateRetry = 1;
         private int _maxReceiveRetry = 1;
         private IRetryIntervalStrategy _retryStrategy;
 
@@ -26,7 +26,7 @@ namespace Eventfully.Transports.AzureServiceBus
         {
             _completeImmediateRetryPolicy = Policy
                 .Handle<Exception>()
-                .RetryAsync(_maxCompletionRetry);
+                .RetryAsync(_maxCompletionImmediateRetry);
 
             _receiveDeferredImmediateRetryPolicy = Policy
              .Handle<Exception>()
@@ -135,13 +135,6 @@ namespace Eventfully.Transports.AzureServiceBus
 
         }
 
-        //private TimeSpan _getRetryInterval(int retryCount)
-        //{
-        //    retryCount = retryCount == 0 ? 1 : retryCount;
-        //    //2^3,2^4, 2^5... (8,16,32,64,128 (2min), 256 (4min), 512 (8min), 1024 (17min), 2048 (34min), 4096 (1hr) , 8192 ( 2.2hr) ....)
-        //    var seconds = Math.Pow(2, retryCount + 2);
-        //    return TimeSpan.FromSeconds(seconds);
-        //}
 
         //public async Task Cancel(RecoverabilityContext context)
         //{
