@@ -53,9 +53,9 @@ namespace Eventfully.Semaphore.SqlServer.IntegrationTests
             SqlServerSemaphore sema = new SqlServerSemaphore(ConnectionString, _semaphoreName, 120, 1);
             var semaInfo = await sema.CreateSemaphore();
             semaInfo.Name.ShouldBe(_semaphoreName);
-            foreach(var b in semaInfo.RowVerion)
-                b.ShouldNotBe(default(byte));
 
+            //should have a non empty RowVersion
+            semaInfo.RowVerion.Any(x => x != default(byte)).ShouldBeTrue();
             var owners = sema.Deserialize(semaInfo.OwnersJson);
             owners.Name.ShouldBe(_semaphoreName);
             owners.Owners.ShouldNotBeNull();
@@ -77,11 +77,11 @@ namespace Eventfully.Semaphore.SqlServer.IntegrationTests
         {
             SqlServerSemaphore sema = new SqlServerSemaphore(ConnectionString, _semaphoreName, 120, 1);
             var semaInfo = await sema.CreateSemaphore();
-            Should.Throw<ApplicationException>( sema.CreateSemaphore());
+            Should.Throw<Microsoft.Data.SqlClient.SqlException>( sema.CreateSemaphore());
         }
 
         [Fact]
-        public async Task Should_add_owner()
+        public async Task Should_add_first_owner()
         {
             var nowUtc = DateTime.UtcNow;
             SqlServerSemaphore sema = new SqlServerSemaphore(ConnectionString, _semaphoreName, 120, 1);
