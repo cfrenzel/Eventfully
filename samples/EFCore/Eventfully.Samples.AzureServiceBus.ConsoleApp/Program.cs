@@ -29,6 +29,7 @@ namespace Eventfully.Samples.ConsoleApp
             await PublishOrderCreatedWithDelay();
             await PublishOrderCreatedFromRawJson();
             await PublishEncryptedPaymentMethodCreated();
+            await PublishEventWithFailingHandler();
           
             Console.WriteLine("Press any key to exit...");
             Console.ReadLine();
@@ -166,7 +167,17 @@ namespace Eventfully.Samples.ConsoleApp
             await db.SaveChangesAsync();
         }
 
-       
+
+        static async Task PublishEventWithFailingHandler()
+        {
+            var client = _serviceProvider.GetService<IMessagingClient>();
+            var db = _serviceProvider.GetService<ApplicationDbContext>();
+
+            var ev = new FailingHandler.Event(DateTime.UtcNow.AddMinutes(4));
+            Console.WriteLine($"Publishing Event with failing handler - Id: {ev.Id}");
+            await client.Publish(ev);
+            await db.SaveChangesAsync();
+        }
 
         public ApplicationDbContext CreateDbContext(string[] args)
             {
