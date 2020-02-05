@@ -74,14 +74,15 @@ namespace Eventfully.EFCoreOutbox.IntegrationTests
         [Fact]
         public async Task Should_return_unique_messages_to_concurrent_requests()
         {
-            int numMessages = 60;
-            int batchSize = 5;
+            int numMessages = 180; //60; //300;
+            int batchSize = 15; //5;//30;
             int numClients = 3;
-            int numResultSets = numMessages / batchSize / numClients;
+            int numResultSets = Convert.ToInt32(Math.Ceiling( (double)numMessages / batchSize / numClients ));
 
             await _fixture.CreateOutboxMessages(numMessages);
+
             var sql = $@"
-                DECLARE @runAt0 AS TIME = '{DateTime.Now.AddSeconds(4).ToString("HH:mm:ss")}'--'13:32:00' --local time
+                DECLARE @runAt0 AS TIME = '{DateTime.Now.AddSeconds(3).ToString("HH:mm:ss")}'--'13:32:00' --local time
                 DECLARE @nextRun AS NVARCHAR(8) = CONVERT(nvarchar(8), @runAt0, 108);
                 DECLARE @BatchSize AS INT = {batchSize} --5
                 DECLARE @Counter AS INT =  0
@@ -137,12 +138,14 @@ namespace Eventfully.EFCoreOutbox.IntegrationTests
             SqlCommand cmd;
             List<Guid> results = new List<Guid>();
 
+            var delayMills = 4500 + (1500 * numberResultSets);
             using (conn = new SqlConnection(ConnectionString))
             {
                 conn.Open();
                 cmd = new SqlCommand(sql, conn) {/* CommandTimeout = 60*/ };
                 using (SqlDataReader sqlReader = await cmd.ExecuteReaderAsync())
                 {
+                    await Task.Delay(delayMills);
                     for (int i = 0; i < numberResultSets; i++)
                     {
                         _log.WriteLine($"in result set {label}/{i}");
@@ -152,7 +155,7 @@ namespace Eventfully.EFCoreOutbox.IntegrationTests
                             results.Add(id);
                             _log.WriteLine($"{label}/{i}: {id}");                       
                         }
-                        await Task.Delay(2000);
+                        //await Task.Delay(2000);
                         sqlReader.NextResult();
                     }
                  }

@@ -17,7 +17,7 @@ using Xunit;
 
 namespace Eventfully.Semaphore.SqlServer.IntegrationTests
 {
-     public class IntegrationTestFixture //: IDesignTimeDbContextFactory<ApplicationDbContext>
+    public class IntegrationTestFixture //: IDesignTimeDbContextFactory<ApplicationDbContext>
     {
         
         protected static IConfigurationRoot _config;
