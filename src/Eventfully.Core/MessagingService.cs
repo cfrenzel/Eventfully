@@ -48,11 +48,11 @@ namespace Eventfully
             MachineName = Environment.MachineName;
             MachineAndProcessId = $"{MachineName}-{ProcessId}";
 
-            _configuration = configuration ?? new MessagingConfiguration();
+            _configuration  = configuration ?? new MessagingConfiguration();
 
             if (outbox == null)
                 throw new InvalidOperationException("Outbox cannot be null. An Outbo is required to instantiate MessagingService");
-            _outboxManager = new OutboxManager(outbox, this.DispatchCore, 1, configuration.OutboxConsumerSemaphore, this.MachineAndProcessId);
+            _outboxManager = new OutboxManager(outbox, this.DispatchCore, 1, _configuration.OutboxConsumerSemaphore, this.MachineAndProcessId);
          
             if (factory == null)
                 throw new InvalidOperationException("IServiceFactory cannot be null. An IServiceFactory is required to instantiate MessagingService");

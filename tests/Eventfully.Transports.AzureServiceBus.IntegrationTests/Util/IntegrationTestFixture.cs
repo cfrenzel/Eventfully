@@ -16,10 +16,13 @@ using Microsoft.Azure.ServiceBus;
 using System.Collections.Generic;
 using System.Collections.Concurrent;
 using System.Linq;
+using Xunit;
+
+[assembly: CollectionBehavior(DisableTestParallelization = true)]
 
 namespace Eventfully.Transports.AzureServieBus.IntegrationTests
 {
-
+    [CollectionDefinition("Sequential", DisableParallelization = true)]
     public class IntegrationTestFixture //: IDesignTimeDbContextFactory<ApplicationDbContext>
     {
 

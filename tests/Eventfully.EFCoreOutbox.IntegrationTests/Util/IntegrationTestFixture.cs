@@ -14,10 +14,12 @@ using Microsoft.EntityFrameworkCore.Design;
 using Eventfully.Handlers;
 using Newtonsoft.Json;
 using System.Text;
+using Xunit;
+
+[assembly: CollectionBehavior(DisableTestParallelization = true)]
 
 namespace Eventfully.EFCoreOutbox.IntegrationTests
 {
-
     public class IntegrationTestFixture : IDesignTimeDbContextFactory<ApplicationDbContext>
     {
         

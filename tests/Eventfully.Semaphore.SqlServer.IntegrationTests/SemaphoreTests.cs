@@ -14,7 +14,6 @@ using Xunit.Abstractions;
 namespace Eventfully.Semaphore.SqlServer.IntegrationTests
 {
     using static IntegrationTestFixture;
-    
     [Collection("Sequential")]
     public class SemaphoreTests : IntegrationTestBase, IClassFixture<SemaphoreTests.Fixture>
     {
