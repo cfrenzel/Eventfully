@@ -18,18 +18,32 @@ namespace Eventfully
                Profile profile,
                params Assembly[] messageAndHandlerAssemblies)
         {
-            return AddMessaging(services, profile, null, messageAndHandlerAssemblies);
+            return AddMessaging(services, profile, null, null, messageAndHandlerAssemblies);
         }
 
-        public static IServiceRegistrar AddMessaging(this IServiceCollection services, 
+
+        public static IServiceRegistrar AddMessaging(this IServiceCollection services,
             Profile profile,
             EndpointBindings bindings,
+            params Assembly[] messageAndHandlerAssemblies)
+        {
+            return AddMessaging(services, profile, bindings, null, messageAndHandlerAssemblies);
+        }
+
+        public static IServiceRegistrar AddMessaging(this IServiceCollection services,
+            Profile profile,
+            EndpointBindings bindings,
+            Action<MessagingConfiguration> config,
             params Assembly[] messageAndHandlerAssemblies)
         {
             MessagingService.InitializeTypes(messageAndHandlerAssemblies);
             if(bindings != null)
                 profile.AddBindings(bindings);
+            var messagingConfig = new MessagingConfiguration();
+            if (config != null)
+                config.Invoke(messagingConfig);
 
+            services.AddSingleton(messagingConfig);
             services.AddTransient<IServiceFactory>(x=> new MicrosoftDependencyInjectionServiceFactory(x));            
             services.AddSingleton(profile);
             services.AddSingleton<MessagingService>();

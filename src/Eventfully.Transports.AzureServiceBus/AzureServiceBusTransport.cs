@@ -14,7 +14,7 @@ namespace Eventfully.Transports.AzureServiceBus
 
         public AzureServiceBusTransportSettings(){}
 
-        public bool SpecialFeature { get; private set; }
+        public bool SpecialFeature { get;  set; }
 
         public AzureServiceBusTransportSettings UseSpecialFeature()
         {

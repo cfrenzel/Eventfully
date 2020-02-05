@@ -12,6 +12,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using Eventfully;
+using Eventfully.Semaphore.SqlServer;
 
 namespace Eventfully.Samples.ConsoleApp
 {
@@ -61,6 +62,10 @@ namespace Eventfully.Samples.ConsoleApp
             _services.AddMessaging(
                 new MessagingProfile(_config),
                 _config.GetSection("EndpointBindings").Get<EndpointBindings>(),
+                settings =>
+                {
+                    settings.OutboxConsumerSemaphore = new SqlServerSemaphore(_config.GetConnectionString("ApplicationConnection"), "dev.outbox.consumer", 30, 3);        
+                },
                 typeof(Program).GetTypeInfo().Assembly
             )
             .WithEFCoreOutbox<ApplicationDbContext>(settings =>

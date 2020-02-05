@@ -10,7 +10,7 @@ using Newtonsoft.Json;
 
 namespace Eventfully.Semaphore.SqlServer
 {
-    public class SqlServerSemaphore
+    public class SqlServerSemaphore : ICountingSemaphore
     {
 
         private static ILogger<SqlServerSemaphore> _log = Logging.CreateLogger<SqlServerSemaphore>();
@@ -21,10 +21,18 @@ namespace Eventfully.Semaphore.SqlServer
 
         private readonly SqlConnectionFactory _dbConnection;
 
-        public SqlServerSemaphore(string connectionString, string name, int timeoutInSeconds = 20, int maxConcurrentOwners = 1 )
+        public SqlServerSemaphore(string connectionString, string name, int timeoutInSeconds = 20, int maxConcurrentOwners = 1)
         {
+            if(String.IsNullOrEmpty(name))
+                throw new InvalidOperationException("SqlServer Semaphore requires a name.  Name can not be empty");
             Name = name;
+            
+            if (TimeoutInSeconds < 1)
+                throw new InvalidOperationException("SqlServer Semaphore timeoutInSeconds must be >= 1");
             TimeoutInSeconds = timeoutInSeconds;
+
+            if (maxConcurrentOwners < 1)
+                throw new InvalidOperationException("SqlServer Semaphore maxConcurrentOwners must be >= 1");
             MaxConcurrentOwners = maxConcurrentOwners;
 
             if (String.IsNullOrEmpty(connectionString))
@@ -37,7 +45,7 @@ namespace Eventfully.Semaphore.SqlServer
         {
             try
             {
-                var semInfo = await GetSemaphoreInfo(true);
+                var semInfo = await GetSemaphoreInfo(true);//create if not exists
                 var owners = Deserialize(semInfo.OwnersJson);
                 owners.RemoveExpired();
                 if (owners.Add(ownerId, this.MaxConcurrentOwners, this.TimeoutInSeconds))
@@ -57,7 +65,7 @@ namespace Eventfully.Semaphore.SqlServer
         {
             try
             {
-                var semInfo = await GetSemaphoreInfo();
+                var semInfo = await GetSemaphoreInfo(true);//create if not exists
                 var owners = Deserialize(semInfo.OwnersJson);
                 owners.RemoveExpired();
                 if (owners.Renew(ownerId, this.MaxConcurrentOwners, this.TimeoutInSeconds))
@@ -95,7 +103,7 @@ namespace Eventfully.Semaphore.SqlServer
             return true;
         }
 
-    
+
 
         public class SemaphoreOwners
         {
@@ -105,11 +113,7 @@ namespace Eventfully.Semaphore.SqlServer
             public void RemoveExpired(DateTime? utcNow = null)
             {
                 DateTime now = utcNow ?? DateTime.UtcNow;
-                foreach(var owner in Owners)
-                {
-                    if (owner.ExpiresAtUtc <= now)
-                        Owners.Remove(owner);
-                }
+                Owners.RemoveAll(x => x.ExpiresAtUtc <= now);
             }
 
             public bool Add(string ownerId, int maxConcurrentOwners, int timeoutInSeconds, DateTime? utcNow = null)
@@ -118,16 +122,16 @@ namespace Eventfully.Semaphore.SqlServer
                 var owner = Owners.SingleOrDefault(x => x.OwnerId.Equals(ownerId));
                 if (owner != null)
                     return Renew(ownerId, maxConcurrentOwners, timeoutInSeconds, now);
-                
+
                 if (this.Owners.Count < maxConcurrentOwners)
                 {
-                    this.Owners.Add(new SemaphoreOwner() 
+                    this.Owners.Add(new SemaphoreOwner()
                     {
-                        OwnerId = ownerId, 
-                        ExpiresAtUtc = now.AddSeconds(timeoutInSeconds) 
+                        OwnerId = ownerId,
+                        ExpiresAtUtc = now.AddSeconds(timeoutInSeconds)
                     });
                     return true;
-                 }   
+                }
                 return false;
             }
 
@@ -199,7 +203,7 @@ namespace Eventfully.Semaphore.SqlServer
                 }
             }
 
-            if(!exists && createIfNotExists)
+            if (!exists && createIfNotExists)
                 return await CreateSemaphore();
 
             throw new ApplicationException("Error getting semaphore info");
@@ -220,8 +224,8 @@ namespace Eventfully.Semaphore.SqlServer
                     Direction = ParameterDirection.Input,
                 };
                 command.Parameters.Add(nameParam);
-             
-                SqlParameter ownersParam = new SqlParameter("@Owners", Serialize(new SemaphoreOwners() { Name = this.Name}))
+
+                SqlParameter ownersParam = new SqlParameter("@Owners", Serialize(new SemaphoreOwners() { Name = this.Name }))
                 {
                     SqlDbType = SqlDbType.NVarChar,
                     Direction = ParameterDirection.Input,

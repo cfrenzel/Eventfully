@@ -38,6 +38,7 @@
     <ProjectReference Include="..\..\..\src\Eventfully.Core\Eventfully.Core.csproj" />
     <ProjectReference Include="..\..\..\src\Eventfully.EFCoreOutbox\Eventfully.EFCoreOutbox.csproj" />
     <ProjectReference Include="..\..\..\src\Eventfully.MicrosoftDependencyInjection\Eventfully.Extensions.Microsoft.DependencyInjection.csproj" />
+    <ProjectReference Include="..\..\..\src\Eventfully.Semaphore.SqlServer\Eventfully.Semaphore.SqlServer.csproj" />
     <ProjectReference Include="..\..\..\src\Eventfully.Transports.AzureServiceBus\Eventfully.Transports.AzureServiceBus.csproj" />
   </ItemGroup>
 
