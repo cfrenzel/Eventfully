@@ -103,6 +103,9 @@ namespace Eventfully.Outboxing
 
         public void Dispose()
         {
+            if (_outboxConsumerSemaphore != null)
+                _outboxConsumerSemaphore.TryRelease(this._uniqueIdentifier).GetAwaiter().GetResult();
+
             _dispatchTimer?.Dispose();
             _cleanUpTimer?.Dispose();
             _resetTimer?.Dispose();
@@ -147,10 +150,8 @@ namespace Eventfully.Outboxing
             {
                 if (_resetTimer == null)//if stopping
                     return;
-
                 await _outbox.Reset(_resetAge);
                 _log.LogDebug("OutboxMessagePumpService is Resetting.");
-
             }
             catch (Exception exc)
             {
