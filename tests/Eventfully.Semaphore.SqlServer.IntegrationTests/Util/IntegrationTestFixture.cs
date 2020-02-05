@@ -11,11 +11,13 @@ using FakeItEasy;
 using System.Reflection;
 using Newtonsoft.Json;
 using System.Text;
+using Xunit;
+
+[assembly: CollectionBehavior(DisableTestParallelization = true)]
 
 namespace Eventfully.Semaphore.SqlServer.IntegrationTests
 {
-
-    public class IntegrationTestFixture //: IDesignTimeDbContextFactory<ApplicationDbContext>
+     public class IntegrationTestFixture //: IDesignTimeDbContextFactory<ApplicationDbContext>
     {
         
         protected static IConfigurationRoot _config;
@@ -52,7 +54,9 @@ namespace Eventfully.Semaphore.SqlServer.IntegrationTests
                //SchemasToExclude = new[]{}
             };
 
-           
+            ///Setup internal logging for eventfully
+            Logging.LoggerFactory = _serviceProvider.GetRequiredService<ILoggerFactory>();
+
 
         }
 
