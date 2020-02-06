@@ -35,15 +35,12 @@ namespace Eventfully.Semaphore.SqlServer.IntegrationTests
         {
             this._fixture = fixture;
             this._log = log;
-            ResetCheckpoint();//reset after every run
+            ResetCheckpoint().GetAwaiter().GetResult();//reset after every run
         }
 
         public class Fixture
         {
-            public Fixture()
-            {
-            
-            }
+            public Fixture() { }
         }
 
         [Fact]
