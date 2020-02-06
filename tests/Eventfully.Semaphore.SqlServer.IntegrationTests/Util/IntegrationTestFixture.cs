@@ -17,6 +17,12 @@ using Xunit;
 
 namespace Eventfully.Semaphore.SqlServer.IntegrationTests
 {
+    /// <summary>
+    ///A class with no code, only used to define the collection
+    /// </summary>
+    //[CollectionDefinition("Sequential", DisableParallelization = true)]
+    //public class SequentialCollectionDefinition {}
+
     public class IntegrationTestFixture //: IDesignTimeDbContextFactory<ApplicationDbContext>
     {
         

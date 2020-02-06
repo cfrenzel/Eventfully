@@ -22,7 +22,6 @@ using Xunit;
 
 namespace Eventfully.Transports.AzureServieBus.IntegrationTests
 {
-    [CollectionDefinition("Sequential", DisableParallelization = true)]
     public class IntegrationTestFixture //: IDesignTimeDbContextFactory<ApplicationDbContext>
     {
 
