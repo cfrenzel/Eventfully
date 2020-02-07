@@ -14,13 +14,20 @@ namespace Eventfully.Transports.AzureServiceBus
     public class AzureServiceBusCloneRecoverabilityProvider : IAzureServiceBusRecoverabilityProvider
     {
         private readonly AsyncRetryPolicy _completeImmediateRetryPolicy;
-        private int _maxCompletionRetry = 1;
+        private int _maxCompletionImmediateRetry = 1;
+        private IRetryIntervalStrategy _retryStrategy;
+        private int _maxDeliveryCount = 20;
 
-        public AzureServiceBusCloneRecoverabilityProvider()
+
+        public AzureServiceBusCloneRecoverabilityProvider(IRetryIntervalStrategy retryStrategy = null, int maxDeliveryCount = 20)
         {
             _completeImmediateRetryPolicy = Policy
                 .Handle<Exception>()
-                .RetryAsync(_maxCompletionRetry);
+                .RetryAsync(_maxCompletionImmediateRetry);
+
+            _retryStrategy = retryStrategy != null ? retryStrategy : new DefaultExponentialRetryStrategy();
+            _maxDeliveryCount = maxDeliveryCount;
+            
         }
 
         public async Task<RecoverabilityContext> OnPreHandle(RecoverabilityContext context)
@@ -45,7 +52,7 @@ namespace Eventfully.Transports.AzureServiceBus
 
             await sender.ScheduleMessageAsync(
                retryMessage,
-               DateTime.UtcNow.Add(_getRetryInterval(++count))
+               this._retryStrategy.GetNextDateUtc(++count)
             );
 
             //complete the original message - we've already scheduled a clone
@@ -62,7 +69,7 @@ namespace Eventfully.Transports.AzureServiceBus
 
         private async Task<bool> _handleMaxRetry(int recoveryCount, Message message, RecoverabilityContext context)
         {
-            if (message.SystemProperties.DeliveryCount > 1 || recoveryCount > 9)
+            if (message.SystemProperties.DeliveryCount > 1 || recoveryCount > _maxDeliveryCount)
             {
                 await context.Receiver.DeadLetterAsync(message.SystemProperties.LockToken);
                 return true;
@@ -79,14 +86,7 @@ namespace Eventfully.Transports.AzureServiceBus
 
         }
 
-        private TimeSpan _getRetryInterval(int retryCount)
-        {
-            retryCount = retryCount == 0 ? 1 : retryCount;
-            //2^3,2^4, 2^5... (8,16,32,64,128 (2min), 256 (4min), 512 (8min), 1024 (17min), 2048 (34min), 4096 (1hr) , 8192 ( 2.2hr) ....)
-            var seconds = Math.Pow(2, retryCount + 2);
-            return TimeSpan.FromSeconds(seconds);
-        }
-
+    
 
     }
 }

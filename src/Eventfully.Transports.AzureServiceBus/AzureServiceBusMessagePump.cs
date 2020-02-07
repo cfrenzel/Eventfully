@@ -16,7 +16,6 @@ namespace Eventfully.Transports.AzureServiceBus
     {
         Task StartAsync(CancellationToken stoppingToken);
         Task StopAsync();
-
     }
 
     public class AzureServiceBusMessagePumpSettings
@@ -135,7 +134,6 @@ namespace Eventfully.Transports.AzureServiceBus
                    _receiver.CompleteAsync(context.Message.SystemProperties.LockToken)
                );
                 await _recoverability.OnPostHandle(context);
-
             }
         }
 

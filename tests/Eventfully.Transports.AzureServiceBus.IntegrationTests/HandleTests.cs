@@ -28,9 +28,8 @@ namespace Eventfully.Transports.AzureServieBus.IntegrationTests
         {
             this._fixture = fixture;
             this._log = log;
-            //using (var scope = NewScope())
-            //{
-            //}
+
+            IntegrationTestFixture.ClearQueue(IntegrationTestFixture.QueueEndpoint).GetAwaiter().GetResult();
         }
 
         public class Fixture
@@ -63,7 +62,7 @@ namespace Eventfully.Transports.AzureServieBus.IntegrationTests
             };
             var messageBytes = IntegrationTestFixture.Serialize(message);
             await IntegrationTestFixture.WriteToQueue(IntegrationTestFixture.QueueEndpoint, message.MessageType, messageBytes, null);
-            await Task.Delay(1000);
+            await Task.Delay(3000);
 
              A.CallTo(() => fakeHandler.Handle(
                 A<TransportMessage>.That.Matches(x => 

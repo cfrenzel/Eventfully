@@ -6,39 +6,19 @@ using System.Text;
 
 namespace Eventfully
 {
-    public interface IEndpointFluent
-    {
-        TransportSettings TransportSettings { get; set; }
-
-        EndpointSettings AsEventDefault();
-        EndpointSettings AsInbound();
-        EndpointSettings AsInboundOutbound();
-        EndpointSettings AsOutbound();
-        EndpointSettings AsReplyDefault();
-
-        BindMessageSettings<T> BindCommand<T>() where T : IIntegrationCommand;
-        BindMessageSettings<T> BindEvent<T>() where T : IIntegrationEvent;
-        EndpointSettings BindCommand(string messageTypeIdentifier);
-
-        EndpointSettings WithFilter(params IIntegrationMessageFilter[] filters);
-        EndpointSettings WithFilter(params ITransportMessageFilter[] filters);
-
-        //EndpointSettings WithOutboundFilter(params IIntegrationMessageFilter[] filters);
-        //EndpointSettings WithOutboundFilter(params ITransportMessageFilter[] filters);
-    }
 
     public class EndpointSettings : IEndpointFluent
     {
         public string Name { get; set; }
         public string ConnectionString { get; set; }
 
-        public bool IsReader { get;  set; }
-        public bool IsWriter { get;  set; }
-        public bool IsEventDefault { get;  set; }
+        public bool IsReader { get; set; }
+        public bool IsWriter { get; set; }
+        public bool IsEventDefault { get; set; }
         public bool IsReplyDefault { get; set; }
 
-        public List<Type> MessageTypes { get;  set; } = new List<Type>();
-        public List<string> MessageTypeIdentifiers { get;  set; } = new List<string>();
+        public List<Type> MessageTypes { get; set; } = new List<Type>();
+        public List<string> MessageTypeIdentifiers { get; set; } = new List<string>();
 
 
         public TransportSettings TransportSettings { get; set; }
@@ -161,9 +141,9 @@ namespace Eventfully
 
     public abstract class EndpointSubSettings : IEndpointFluent
     {
-        protected readonly EndpointSettings _settings;
+        protected readonly IEndpointFluent _settings;
 
-        public EndpointSubSettings(EndpointSettings settings)
+        public EndpointSubSettings(IEndpointFluent settings)
         {
             _settings = settings;
         }
@@ -234,7 +214,7 @@ namespace Eventfully
 
         public BindMessageSettings<T> UseAesEncryption(string key, bool isBase64Encoded = false)
         {
-            if(String.IsNullOrEmpty(key))
+            if (String.IsNullOrEmpty(key))
                 throw new InvalidOperationException("UseEncryption requires a non empty value for key");
 
             return UseAesEncryption(null, new StringKeyProvider(key, isBase64Encoded));
@@ -255,5 +235,6 @@ namespace Eventfully
     }
 
 
+   
 
 }

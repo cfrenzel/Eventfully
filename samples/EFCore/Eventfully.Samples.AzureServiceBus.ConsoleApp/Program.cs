@@ -12,6 +12,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using Eventfully;
+using Eventfully.Semaphore.SqlServer;
 
 namespace Eventfully.Samples.ConsoleApp
 {
@@ -29,6 +30,7 @@ namespace Eventfully.Samples.ConsoleApp
             await PublishOrderCreatedWithDelay();
             await PublishOrderCreatedFromRawJson();
             await PublishEncryptedPaymentMethodCreated();
+            await PublishEventWithFailingHandler();
           
             Console.WriteLine("Press any key to exit...");
             Console.ReadLine();
@@ -60,6 +62,10 @@ namespace Eventfully.Samples.ConsoleApp
             _services.AddMessaging(
                 new MessagingProfile(_config),
                 _config.GetSection("EndpointBindings").Get<EndpointBindings>(),
+                settings =>
+                {
+                    settings.OutboxConsumerSemaphore = new SqlServerSemaphore(_config.GetConnectionString("ApplicationConnection"), "dev.outbox.consumer", 30, 3);        
+                },
                 typeof(Program).GetTypeInfo().Assembly
             )
             .WithEFCoreOutbox<ApplicationDbContext>(settings =>
@@ -166,7 +172,17 @@ namespace Eventfully.Samples.ConsoleApp
             await db.SaveChangesAsync();
         }
 
-       
+
+        static async Task PublishEventWithFailingHandler()
+        {
+            var client = _serviceProvider.GetService<IMessagingClient>();
+            var db = _serviceProvider.GetService<ApplicationDbContext>();
+
+            var ev = new FailingHandler.Event(DateTime.UtcNow.AddMinutes(4));
+            Console.WriteLine($"Publishing Event with failing handler - Id: {ev.Id}");
+            await client.Publish(ev);
+            await db.SaveChangesAsync();
+        }
 
         public ApplicationDbContext CreateDbContext(string[] args)
             {

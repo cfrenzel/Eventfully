@@ -7,22 +7,29 @@ namespace Eventfully.Transports.AzureServiceBus
 {
 
    
+    public class WrappedTransportSettings : EndpointSubSettings
+    {
+        private AzureServiceBusTransportSettings _transportSettings;
+        public WrappedTransportSettings(IEndpointFluent endpointSettings, AzureServiceBusTransportSettings transportSettings) : base(endpointSettings)
+        {
+            _transportSettings = transportSettings;
+        }
+
+        public bool SpecialFeature {
+            get { return _transportSettings.SpecialFeature; }
+            set { _transportSettings.SpecialFeature = value; }
+        }
+
+    }
 
     public static class AzureServiceBusConfigurationExtensions
     {
-        public static AzureServiceBusTransportSettings UseAzureServiceBusTransport(this IEndpointFluent endpointSettings)
+        public static WrappedTransportSettings UseAzureServiceBusTransport(this IEndpointFluent endpointSettings)
         {
             var settings = new AzureServiceBusTransportSettings();
             endpointSettings.TransportSettings = settings;
-            return settings;
+            return new WrappedTransportSettings(endpointSettings, settings);
         }
-
-        //public static AzureServiceBusTransportConfiguration UseAzureServiceBusTransport(this Profile profile)
-        //{
-        //    var transport = new AzureServiceBusTransport();
-        //    var aconfig = new AzureServiceBusTransportConfiguration();
-        //    //profile.RegisterTransport(transport, aconfig);
-        //    return aconfig;
-        //}
+       
     }
 }
