@@ -142,6 +142,17 @@ class Build : NukeBuild
                 .SetPackageTags("messaging servicebus cqrs distributed azureservicebus efcore ddd microservice azurekeyvault")
                 .SetNoDependencies(true)
                 .SetOutputDirectory(NugetDirectory));
+
+            DotNetPack(s => s
+               .SetProject(Solution.GetProject("Eventfully.Semaphore.SqlServer"))
+               .SetConfiguration(Configuration)
+               .EnableNoBuild()
+               .EnableNoRestore()
+               .SetVersion(NuGetVersionCustom)
+               .SetDescription("Simple client managed shared access control with timeout using sql server table row and optimistic concurrency")
+               .SetPackageTags("messaging servicebus cqrs distributed azureservicebus efcore ddd microservice azurekeyvault")
+               .SetNoDependencies(true)
+               .SetOutputDirectory(NugetDirectory));
         });
 
 
