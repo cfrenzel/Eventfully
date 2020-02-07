@@ -173,8 +173,7 @@ namespace Eventfully.EFCoreOutbox
             return outboxMessages;
         }
 
-       
-
+      
         public async Task CleanUp(TimeSpan cleanupAge)
         {
             using (var conn = _dbConnection.Get())

@@ -10,6 +10,7 @@ using Polly.Retry;
 using Eventfully.Filters;
 using Eventfully.Handlers;
 using Eventfully.Outboxing;
+using System.Diagnostics;
 
 namespace Eventfully
 {
@@ -32,15 +33,26 @@ namespace Eventfully
         
         private readonly IMessageDispatcher _messageHandlerDispatcher;
         private readonly IOutboxManager _outboxManager;
+        private readonly MessagingConfiguration _configuration;
 
         private int _maxImmediateRetryCount = 1;// deal with transient errors before doing a more sophisticated retry with backoff
         private readonly AsyncRetryPolicy _immediateHandleRetryPolicy;
 
-        public MessagingService(IOutbox outbox, IServiceFactory factory, Profile profile = null)
+        public readonly int ProcessId;
+        public readonly string MachineName;
+        public readonly string MachineAndProcessId; 
+
+        public MessagingService(IOutbox outbox, IServiceFactory factory, Profile profile = null, MessagingConfiguration configuration = null)
         {
+            ProcessId =  Process.GetCurrentProcess().Id;
+            MachineName = Environment.MachineName;
+            MachineAndProcessId = $"{MachineName}-{ProcessId}";
+
+            _configuration  = configuration ?? new MessagingConfiguration();
+
             if (outbox == null)
                 throw new InvalidOperationException("Outbox cannot be null. An Outbo is required to instantiate MessagingService");
-            _outboxManager = new OutboxManager(outbox, this.DispatchCore);
+            _outboxManager = new OutboxManager(outbox, this.DispatchCore, 1, _configuration.OutboxConsumerSemaphore, this.MachineAndProcessId);
          
             if (factory == null)
                 throw new InvalidOperationException("IServiceFactory cannot be null. An IServiceFactory is required to instantiate MessagingService");
