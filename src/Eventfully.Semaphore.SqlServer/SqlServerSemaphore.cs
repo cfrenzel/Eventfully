@@ -125,11 +125,7 @@ namespace Eventfully.Semaphore.SqlServer
 
                 if (this.Owners.Count < maxConcurrentOwners)
                 {
-                    this.Owners.Add(new SemaphoreOwner()
-                    {
-                        OwnerId = ownerId,
-                        ExpiresAtUtc = now.AddSeconds(timeoutInSeconds)
-                    });
+                    this.Owners.Add(new SemaphoreOwner(ownerId, now.AddSeconds(timeoutInSeconds)));
                     return true;
                 }
                 return false;
@@ -160,8 +156,13 @@ namespace Eventfully.Semaphore.SqlServer
             {
                 public string OwnerId { get; set; }
                 public string OwnerDescription { get; set; }
+
                 public DateTime ExpiresAtUtc { get; set; }
-                public SemaphoreOwner() { }
+                public SemaphoreOwner(string ownerId, DateTime expiresAtutc) 
+                {
+                    this.OwnerId = ownerId;
+                    this.ExpiresAtUtc = expiresAtutc;
+                }
             }
         }
 

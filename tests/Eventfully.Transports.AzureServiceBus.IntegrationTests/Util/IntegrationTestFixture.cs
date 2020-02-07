@@ -18,7 +18,7 @@ using System.Collections.Concurrent;
 using System.Linq;
 using Xunit;
 
-[assembly: CollectionBehavior(DisableTestParallelization = true)]
+[assembly: CollectionBehavior(DisableTestParallelization = true, MaxParallelThreads =1)]
 
 namespace Eventfully.Transports.AzureServieBus.IntegrationTests
 {
