@@ -30,9 +30,6 @@ namespace Eventfully.Transports.AzureServieBus.IntegrationTests
             this._log = log;
 
             IntegrationTestFixture.ClearQueue(IntegrationTestFixture.QueueEndpoint).GetAwaiter().GetResult();
-            //using (var scope = NewScope())
-            //{
-            //}
         }
 
         public class Fixture
@@ -137,7 +134,7 @@ namespace Eventfully.Transports.AzureServieBus.IntegrationTests
 
             var meta = new MessageMetaData(delay: TimeSpan.FromSeconds(10), messageId: message.Id.ToString());
             await IntegrationTestFixture.Transport.Dispatch(message.MessageType, messageBytes, IntegrationTestFixture.QueueEndpoint, meta);
-            await Task.Delay(7000);
+            await Task.Delay(9000);
 
             A.CallTo(() => fakeHandler.HandleMessage(
                A<Message>.That.Matches(x =>
@@ -147,7 +144,7 @@ namespace Eventfully.Transports.AzureServieBus.IntegrationTests
                A<CancellationToken>.Ignored
             )).MustNotHaveHappened();
 
-            await Task.Delay(6000);
+            await Task.Delay(5000);
 
             A.CallTo(() => fakeHandler.HandleMessage(
                A<Message>.That.Matches(x =>
@@ -155,7 +152,7 @@ namespace Eventfully.Transports.AzureServieBus.IntegrationTests
                    && x.Body.SequenceEqual(messageBytes)
                ),
                A<CancellationToken>.Ignored
-           )).MustHaveHappenedOnceOrMore();
+           )).MustHaveHappenedOnceExactly();
 
             await client.CloseAsync();
         }
