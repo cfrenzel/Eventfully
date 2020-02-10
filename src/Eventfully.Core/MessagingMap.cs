@@ -188,6 +188,7 @@ namespace Eventfully
             var messageInterface = typeof(IIntegrationMessage);
             var handlerInterface = typeof(IMessageHandler<>);
             var sagaInterface = typeof(ISaga<,>);
+            var stateMachineInterface = typeof(ISaga<,>);
 
             var types = assemblies.SelectMany(s => s.GetTypes());
             foreach (var type in types)

@@ -5,22 +5,21 @@ using System.Threading.Tasks;
 
 namespace Eventfully
 {
-
     public interface ISaga
     {
-        object State { get; set; }
+        object State { get;}
+        //void SetState(object state);
         object FindKey(IIntegrationMessage message, MessageMetaData meta);
     }
 
-    public interface ISaga<T, K> : ISaga
+    public interface ISaga<S, K> : ISaga
     {
-        new T State { set; }
+        new S State { get; }
         new K FindKey(IIntegrationMessage message, MessageMetaData meta);
+        //void SetState(S state);
     }
 
-
-
-    public class Saga<T, K> : ISaga<T, K>
+    public class Saga<S, K> : ISaga<S, K>
     {
         protected Dictionary<Type, Func<IIntegrationMessage, MessageMetaData, K>> _keyMappers = new Dictionary<Type, Func<IIntegrationMessage, MessageMetaData, K>>();
         
@@ -37,10 +36,14 @@ namespace Eventfully
 
         object ISaga.FindKey(IIntegrationMessage message, MessageMetaData meta) => FindKey(message, meta);
       
-        public T State { protected get;  set; }
-        object ISaga.State { get =>  State; set => State = (T)value; }
+        public S State { get;  protected set; }
+        object ISaga.State { get =>  State; }
+        //void ISaga.SetState(object state) { this.SetState((S)state); }
+
+        //public virtual void SetState(S state)
+        //{
+        //    this.State = state;
+       // }
 
      }
-
-
 }
