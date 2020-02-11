@@ -37,6 +37,7 @@ namespace Eventfully.Core.UnitTests
         public class PizzaFulfillmentState : IProcessManagerMachineState
         {
             public Guid Id { get; set; }
+            public DateTime? OrderedAtUtc { get; set; }
             public DateTime? PreparedAtUtc { get; set; }
             public DateTime? PaidAtUtc { get; set; }
             public DateTime? ShippedAtUtc { get; set; }
@@ -107,6 +108,36 @@ namespace Eventfully.Core.UnitTests
             }
         }
 
+        public class PizzaTriggeredFulfillmentProcess : ProcessManagerMachine<PizzaFulfillmentState, Guid>,
+            ITriggeredBy<PizzaOrderedEvent>,
+            IMachineMessageHandler<PizzaDeliveredEvent>
+        {
+            public PizzaTriggeredFulfillmentProcess(){ }
+
+            public Task Handle(PizzaOrderedEvent message, MessageContext context)
+            {
+                this.State.OrderedAtUtc = message.OrderedAt;
+                Become(Ordered);
+                return Task.CompletedTask;
+            }
+            public void Ordered()
+            {
+                Handle<PizzaDeliveredEvent>((message, context) => {
+                    if (State.DeliveredAtUtc.HasValue)
+                        return Task.CompletedTask;
+                    State.DeliveredAtUtc = message.DeliveredAt;
+                    Become(Complete);
+                    return Task.CompletedTask;
+                });
+            }
+
+            public void Complete()
+            {
+                State.CompletedAtUtc = DateTime.UtcNow;
+            }
+
+        }
+
         public class DuplicateHandlerProcess : ProcessManagerMachine<PizzaFulfillmentState, Guid>,
            IMachineMessageHandler<PizzaPaidForEvent>,
            IMachineMessageHandler<PizzaPreparedEvent>
@@ -126,10 +157,11 @@ namespace Eventfully.Core.UnitTests
             }
         }
 
-        //public class PizzaOrderedEvent : IntegrationEvent
-        //{
-        //    public override string MessageType => "Pizza.Ordered";
-        //}
+        public class PizzaOrderedEvent : IntegrationEvent
+        {
+            public override string MessageType => "Pizza.Ordered";
+            public DateTime? OrderedAt { get; set; }
+        }
 
         public class PizzaPaidForEvent : IntegrationEvent
         {
@@ -163,6 +195,16 @@ namespace Eventfully.Core.UnitTests
             process.State.ShouldNotBeNull();
             process.State.CurrentState.ShouldBe("Ordered");
         }
+
+        [Fact]
+        public void Should_not_allow_set_state_to_null()
+        {
+            var process = new PizzaFulfillmentProcess();
+            process.SetState(null);
+            process.State.ShouldNotBeNull();
+            process.State.CurrentState.ShouldBe("Ordered");
+        }
+
 
         [Fact]
         public void Should_throw_on_register_duplicate_handlers_per_state()
@@ -203,38 +245,48 @@ namespace Eventfully.Core.UnitTests
             process.State.CurrentState.ShouldBeNull();
         }
 
+
         [Fact]
-        public void Should_throw_on_set_state_with_null_state()
+        public async Task Should_trigger_event_should_use_trigger_handler()
         {
-            var process = new PizzaFulfillmentProcess();
-            Should.Throw<ArgumentNullException>(
-               () => process.SetState(null)
-            );
+            var orderDate = DateTime.UtcNow;
+            var process = new PizzaTriggeredFulfillmentProcess();
+            process.State.CurrentState.ShouldBeNull();
+            var trigger = process as ITriggeredBy<PizzaOrderedEvent>;
+            await trigger.Handle(new PizzaOrderedEvent() {  OrderedAt = orderDate }, _fixture.FakeContext);
+            process.State.OrderedAtUtc.ShouldBe(orderDate);
+            process.State.CurrentState.ShouldBe("Ordered");
+
+            var deliverDate = DateTime.UtcNow;
+            await process.Handle(new PizzaDeliveredEvent() { DeliveredAt = deliverDate }, _fixture.FakeContext);
+            process.State.CurrentState.ShouldBe("Complete");
+            process.State.DeliveredAtUtc.ShouldBe(deliverDate);
+            process.State.CompletedAtUtc.Value.ShouldBeGreaterThan(deliverDate);
         }
 
         [Fact]
-        public void Should_transition_on_message_to_completion()
+        public async Task Should_transition_on_message_to_completion()
         {
             var process = new PizzaFulfillmentProcess();
             process.State.CurrentState.ShouldBe("Ordered");
 
             var prepareDate = DateTime.UtcNow;
-            process.Handle(new PizzaPreparedEvent() { PreparedAt = prepareDate }, _fixture.FakeContext);
+            await process.Handle(new PizzaPreparedEvent() { PreparedAt = prepareDate }, _fixture.FakeContext);
             process.State.CurrentState.ShouldBe("Ordered");
             process.State.PreparedAtUtc.ShouldBe(prepareDate);
 
             var payDate = DateTime.UtcNow;
-            process.Handle(new PizzaPaidForEvent() { PaidAt = payDate }, _fixture.FakeContext);
+            await process.Handle(new PizzaPaidForEvent() { PaidAt = payDate }, _fixture.FakeContext);
             process.State.CurrentState.ShouldBe("Ready");
             process.State.PaidAtUtc.ShouldBe(payDate);
 
             var shipDate = DateTime.UtcNow;
-            process.Handle(new PizzaShippedEvent() { ShippedAt = shipDate }, _fixture.FakeContext);
+            await process.Handle(new PizzaShippedEvent() { ShippedAt = shipDate }, _fixture.FakeContext);
             process.State.CurrentState.ShouldBe("OutForDelivery");
             process.State.ShippedAtUtc.ShouldBe(shipDate);
 
             var deliverDate = DateTime.UtcNow;
-            process.Handle(new PizzaDeliveredEvent() { DeliveredAt = deliverDate }, _fixture.FakeContext);
+            await process.Handle(new PizzaDeliveredEvent() { DeliveredAt = deliverDate }, _fixture.FakeContext);
             process.State.CurrentState.ShouldBe("Complete");
             process.State.DeliveredAtUtc.ShouldBe(deliverDate);
             process.State.CompletedAtUtc.Value.ShouldBeGreaterThan(deliverDate);

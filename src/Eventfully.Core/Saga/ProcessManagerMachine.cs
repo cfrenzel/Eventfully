@@ -34,20 +34,19 @@ namespace Eventfully
 
         public ProcessManagerMachine()
         {
-            //SetState((S)Activator.CreateInstance(typeof(S)));
         }
 
         public override void SetState(S state)
         {
-            //if (state == null)
-            //    SetState((S)Activator.CreateInstance(typeof(S)));
-            ////throw new ArgumentNullException("SetState requires a State object.  State cannot be null");
-            base.SetState(state);
-            
-            if (!String.IsNullOrEmpty(this.State.CurrentState))
+            if (state != null)
             {
-                MethodInfo stateMethod = this.GetType().GetMethod(this.State.CurrentState);
-                Become((Action)Delegate.CreateDelegate(typeof(Action), stateMethod));
+                base.SetState(state);
+
+                if (!String.IsNullOrEmpty(this.State.CurrentState))
+                {
+                    MethodInfo stateMethod = this.GetType().GetMethod(this.State.CurrentState);
+                    Become((Action)Delegate.CreateDelegate(typeof(Action), stateMethod));
+                }
             }
         }
 
