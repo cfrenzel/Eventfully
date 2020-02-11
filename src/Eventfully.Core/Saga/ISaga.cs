@@ -26,7 +26,6 @@ namespace Eventfully
 
         public Saga()
         {
-            SetState((S)Activator.CreateInstance(typeof(S)));
         }
 
         protected void MapIdFor<M>(Func<M, MessageMetaData, K> mapper) where M : IIntegrationMessage
@@ -51,7 +50,7 @@ namespace Eventfully
         public virtual void SetState(S state)
         {
             if (state == null)
-                return;
+                throw new InvalidOperationException("State can not be null");
             this.State = state;
         }
 

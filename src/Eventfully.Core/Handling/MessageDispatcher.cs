@@ -68,19 +68,19 @@ namespace Eventfully.Handlers
                         {
                             var customHandler = scope.GetInstance<ICustomMessageHandler<T>>();
                             var saga = customHandler as ISaga;
-                            await persistence.LoadState(saga, saga.FindKey(message, context.MetaData));
+                            await persistence.LoadOrCreateState(saga, saga.FindKey(message, context.MetaData));
                             if (handler is ITriggeredBy<T>)
                                 await handler.Handle(message, context);
                             else
                                 await customHandler.Handle(message, context);
-                            await persistence.SaveState(saga);
+                            await persistence.AddOrUpdateState(saga);
                         }
                         else
                         {
                             var saga = handler as ISaga;
-                            await persistence.LoadState(saga, saga.FindKey(message, context.MetaData));
+                            await persistence.LoadOrCreateState(saga, saga.FindKey(message, context.MetaData));
                             await handler.Handle(message, context);
-                            await persistence.SaveState(saga);
+                            await persistence.AddOrUpdateState(saga);
                         }
                     }
                     else // simple case
