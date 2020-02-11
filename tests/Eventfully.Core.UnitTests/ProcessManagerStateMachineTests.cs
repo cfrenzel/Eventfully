@@ -25,11 +25,9 @@ namespace Eventfully.Core.UnitTests
 
         public class Fixture
         {
-            //public PizzaFulfillmentProcess PizzaProcess { get; set; }
             public MessageContext FakeContext { get; set; }
             public Fixture()
             {
-                //PizzaProcess = new PizzaFulfillmentProcess();
                 var messagingService = new MessagingService(A.Fake<IOutbox>(), A.Fake<IServiceFactory>(), null, null);
                 FakeContext = new MessageContext(null, A.Fake<IEndpoint>(), messagingService);
             }
@@ -55,7 +53,7 @@ namespace Eventfully.Core.UnitTests
             IMachineMessageHandler<PizzaDeliveredEvent>
         {
             public PizzaFulfillmentProcess(){
-                Become(Ordered);
+               
             }
 
             public void Ordered()
@@ -142,7 +140,7 @@ namespace Eventfully.Core.UnitTests
            IMachineMessageHandler<PizzaPaidForEvent>,
            IMachineMessageHandler<PizzaPreparedEvent>
         {
-            public DuplicateHandlerProcess(){Become(Initial);}
+            public DuplicateHandlerProcess(){}
             public void Initial() {
                 Handle<PizzaPreparedEvent>((message, context) => {
                     Become(Duplicate);
@@ -189,20 +187,19 @@ namespace Eventfully.Core.UnitTests
 
 
         [Fact]
-        public void Should_instantiate_state_on_new()
+        public void Should_not_instantiate_state_on_new()
         {
             var process = new PizzaFulfillmentProcess();
-            process.State.ShouldNotBeNull();
-            process.State.CurrentState.ShouldBe("Ordered");
+            process.State.ShouldBeNull();
         }
 
         [Fact]
-        public void Should_not_allow_set_state_to_null()
+        public void Should_throw_on_set_state_to_null()
         {
             var process = new PizzaFulfillmentProcess();
-            process.SetState(null);
-            process.State.ShouldNotBeNull();
-            process.State.CurrentState.ShouldBe("Ordered");
+            Should.Throw<InvalidOperationException>(
+               () => process.SetState(null)
+            );
         }
 
 
@@ -210,6 +207,7 @@ namespace Eventfully.Core.UnitTests
         public void Should_throw_on_register_duplicate_handlers_per_state()
         {
             var process = new DuplicateHandlerProcess();
+            process.SetState(new PizzaFulfillmentState() {CurrentState = "Initial"});
             Should.Throw<InvalidOperationException>(
                () => process.Handle(
                     new PizzaPreparedEvent() { PreparedAt = DateTime.UtcNow },
@@ -221,6 +219,7 @@ namespace Eventfully.Core.UnitTests
         public void Should_throw_on_message_with_no_handler_in_state()
         {
             var process = new PizzaFulfillmentProcess();
+            process.SetState(new PizzaFulfillmentState() { CurrentState = "Ordered" });
             Should.Throw<InvalidProcessManagerStateException>(
                () => process.Handle(
                     new PizzaDeliveredEvent() { DeliveredAt = DateTime.UtcNow },
@@ -247,10 +246,11 @@ namespace Eventfully.Core.UnitTests
 
 
         [Fact]
-        public async Task Should_trigger_event_should_use_trigger_handler()
+        public async Task Should_should_use_trigger_handler_on_ITriggeredBy_event()
         {
             var orderDate = DateTime.UtcNow;
             var process = new PizzaTriggeredFulfillmentProcess();
+            process.SetState(new PizzaFulfillmentState());
             process.State.CurrentState.ShouldBeNull();
             var trigger = process as ITriggeredBy<PizzaOrderedEvent>;
             await trigger.Handle(new PizzaOrderedEvent() {  OrderedAt = orderDate }, _fixture.FakeContext);
@@ -268,6 +268,7 @@ namespace Eventfully.Core.UnitTests
         public async Task Should_transition_on_message_to_completion()
         {
             var process = new PizzaFulfillmentProcess();
+            process.SetState(new PizzaFulfillmentState() { CurrentState = "Ordered"});
             process.State.CurrentState.ShouldBe("Ordered");
 
             var prepareDate = DateTime.UtcNow;

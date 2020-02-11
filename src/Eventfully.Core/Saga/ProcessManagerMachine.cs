@@ -6,7 +6,6 @@ using System.Threading.Tasks;
 
 namespace Eventfully
 {
-
     /// <summary>
     /// An alias for custom message handling used specifically for ProcessManagerMachines
     /// </summary>
@@ -18,6 +17,11 @@ namespace Eventfully
         string CurrentState { get; set; }
     }
 
+    /// <summary>
+    /// When the state doesn't have a handler for the event.  
+    /// Could be because events arrived out of order 
+    /// the exception should trigger retry later
+    /// </summary>
     public class InvalidProcessManagerStateException : Exception
     {
         public InvalidProcessManagerStateException(string state, Type messageType) 
@@ -25,28 +29,20 @@ namespace Eventfully
         { }
     }
 
-    
-
     public abstract class ProcessManagerMachine<S, K> :  Saga<S, K>
         where S: IProcessManagerMachineState
     {
         private HandlerState _currentHandlers; 
 
-        public ProcessManagerMachine()
-        {
-        }
+        public ProcessManagerMachine(){}
 
         public override void SetState(S state)
         {
-            if (state != null)
+            base.SetState(state);
+            if (!String.IsNullOrEmpty(this.State.CurrentState))
             {
-                base.SetState(state);
-
-                if (!String.IsNullOrEmpty(this.State.CurrentState))
-                {
-                    MethodInfo stateMethod = this.GetType().GetMethod(this.State.CurrentState);
-                    Become((Action)Delegate.CreateDelegate(typeof(Action), stateMethod));
-                }
+                MethodInfo stateMethod = this.GetType().GetMethod(this.State.CurrentState);
+                Become((Action)Delegate.CreateDelegate(typeof(Action), this, stateMethod));
             }
         }
 
@@ -109,6 +105,7 @@ namespace Eventfully
                     return handler(typed, context);
                 }));
         }
+
         public Func<IIntegrationMessage, MessageContext, Task> GetHandler(Type messageType)
         {
             if (_handlers.ContainsKey(messageType))
@@ -116,4 +113,6 @@ namespace Eventfully
             return null;
         }
     }
+
+
 }
