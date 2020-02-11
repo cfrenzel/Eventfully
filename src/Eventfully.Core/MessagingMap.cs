@@ -151,9 +151,8 @@ namespace Eventfully
         }
 
 
-        public static SagaProperties AddSaga(Type sagaType, Type sagaKeyType, Type sagaStateType, Type sagaPersistenceType, List<Type> handledMessageTypes)
+        public static SagaProperties AddSaga(Type sagaType, Type sagaKeyType, Type sagaStateType, Type sagaPersistenceType, List<Type> handledMessageTypes, bool hasCustomHandler = false)
         {
-
             if (_sagaTypePropMap.ContainsKey(sagaType))
                 throw new InvalidOperationException($"Duplicate Saga Type registered.  SagaType: {sagaType}");
 
@@ -187,15 +186,15 @@ namespace Eventfully
         {
             var messageInterface = typeof(IIntegrationMessage);
             var handlerInterface = typeof(IMessageHandler<>);
-            var sagaInterface = typeof(ISaga<,>);
-            var stateMachineInterface = typeof(ISaga<,>);
-
+            var customHandlerInterface = typeof(ICustomMessageHandler<>);
+            var processManagerInterface = typeof(ISaga<,>);
+            
             var types = assemblies.SelectMany(s => s.GetTypes());
             foreach (var type in types)
             {
                 IEnumerable<Type> handlers;
                 IEnumerable<Type> sagas;
-
+             
                 if (type.IsClass && !type.IsAbstract)
                 {
                     //register message types
@@ -203,21 +202,24 @@ namespace Eventfully
                     {
                         MessagingMap.AddMessageType(type);
                     }
-                    else if (IsAssignableFromGenericType(handlerInterface, type, out handlers))
+                    else if (IsAssignableFromGenericType(new Type[] { handlerInterface, customHandlerInterface }, type, out handlers))
                     {
-                        //register saga types
-                        if (IsAssignableFromGenericType(sagaInterface, type, out sagas))
+                        //has a single handler for all message types
+                        bool hasCustomHandler = handlers.Any(x => x.GetGenericTypeDefinition() == customHandlerInterface);
+
+                        //register process manager types
+                        if (IsAssignableFromGenericType(processManagerInterface, type, out sagas))
                         {
                             List<Type> handledMessageTypes = new List<Type>();
                             var sagaGenerics = sagas.FirstOrDefault().GenericTypeArguments;
                             var sagaStateType = sagaGenerics[0];
                             var sagaIdType = sagaGenerics[1];
                             var sagaPersistenceType = typeof(ISagaPersistence<,>).MakeGenericType(sagaStateType, sagaIdType);
-
+                            
                             foreach (var handler in handlers)
                                 handledMessageTypes.Add(handler.GenericTypeArguments.First());
-
-                            MessagingMap.AddSaga(type, sagaIdType, sagaStateType, sagaPersistenceType, handledMessageTypes);
+                                                      
+                            MessagingMap.AddSaga(type, sagaIdType, sagaStateType, sagaPersistenceType, handledMessageTypes, hasCustomHandler);
                         }
                     }
                 }
@@ -226,9 +228,13 @@ namespace Eventfully
 
         private static bool IsAssignableFromGenericType(Type genericType, Type givenType, out IEnumerable<Type> interfaces)
         {
+            return IsAssignableFromGenericType(new Type[] { genericType }, givenType, out interfaces);
+        }
+        private static bool IsAssignableFromGenericType(Type[] genericTypes, Type givenType, out IEnumerable<Type> interfaces)
+        {
             interfaces = givenType
              .GetInterfaces()
-             .Where(it => it.IsGenericType && it.GetGenericTypeDefinition() == genericType);
+             .Where(it => it.IsGenericType && genericTypes.Contains(it.GetGenericTypeDefinition()));
 
             return interfaces != null && interfaces.Count() > 0;
         }
@@ -266,18 +272,20 @@ namespace Eventfully
         public Type StateType { get; set; }
         public Type KeyType { get; set; }
         public Type SagaPersistenceType { get; set; }
+        public bool HasCustomHandler { get; set; }
         public List<Type> MessageTypes { get; set; } = new List<Type>();
 
 
         public SagaProperties()
         { }
 
-        public SagaProperties(Type type, Type keyType, Type stateType, Type sagaPersistenceType , List<Type> messageTypes)
+        public SagaProperties(Type type, Type keyType, Type stateType, Type sagaPersistenceType , List<Type> messageTypes, bool hasCustomhandler = false)
         {
             this.Type = type;
             this.KeyType = keyType;
             this.StateType = stateType;
             this.SagaPersistenceType = sagaPersistenceType;
+            this.HasCustomHandler = hasCustomhandler;
 
             if (messageTypes != null)
                 MessageTypes = messageTypes;
