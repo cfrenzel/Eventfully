@@ -13,7 +13,6 @@ using Eventfully.Transports;
 
 namespace Eventfully.Core.UnitTests
 {
-    [Collection("Sequential")]
     public class ProcessManagerStateMachineTests : IClassFixture<ProcessManagerStateMachineTests.Fixture>
     {
         private readonly Fixture _fixture;
@@ -26,16 +25,16 @@ namespace Eventfully.Core.UnitTests
 
         public class Fixture
         {
-            //public PizzaFullfilmentProcess PizzaProcess { get; set; }
+            //public PizzaFulfillmentProcess PizzaProcess { get; set; }
             public MessageContext FakeContext { get; set; }
             public Fixture()
             {
-                //PizzaProcess = new PizzaFullfilmentProcess();
+                //PizzaProcess = new PizzaFulfillmentProcess();
                 var messagingService = new MessagingService(A.Fake<IOutbox>(), A.Fake<IServiceFactory>(), null, null);
                 FakeContext = new MessageContext(null, A.Fake<IEndpoint>(), messagingService);
             }
         }
-        public class PizzaFullfilmentState : IProcessManagerMachineState
+        public class PizzaFulfillmentState : IProcessManagerMachineState
         {
             public Guid Id { get; set; }
             public DateTime? PreparedAtUtc { get; set; }
@@ -49,35 +48,34 @@ namespace Eventfully.Core.UnitTests
             public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
         }
 
-        public class PizzaFullfilmentProcess : ProcessManagerMachine<PizzaFullfilmentState, Guid>,
-            //IMachineMessageHandler<PizzaOrderedEvent>,
+        public class PizzaFulfillmentProcess : ProcessManagerMachine<PizzaFulfillmentState, Guid>,
             IMachineMessageHandler<PizzaPaidForEvent>,
             IMachineMessageHandler<PizzaPreparedEvent>,
             IMachineMessageHandler<PizzaDeliveredEvent>
         {
-            //public override Action InitialState => Ordered;
-
-            public PizzaFullfilmentProcess(){
+            public PizzaFulfillmentProcess(){
                 Become(Ordered);
             }
 
             public void Ordered()
             {
                 //Ignore<PizzaOrderedEvent>();
-                Handle<PizzaPaidForEvent>((message, context) => {
+                Handle<PizzaPaidForEvent>( (message, context) => {
                     if (State.PaidAtUtc.HasValue)
-                        return;
+                        return Task.CompletedTask;
                     State.PaidAtUtc = message.PaidAt;
                     if (State.CanBeShipped)
                         Become(Ready);
+                    return Task.CompletedTask;
                 });
 
                 Handle<PizzaPreparedEvent>((message, context) => {
                     if (State.PreparedAtUtc.HasValue)
-                        return;
+                        return Task.CompletedTask;
                     State.PreparedAtUtc = message.PreparedAt;
                     if (State.CanBeShipped)
                         Become(Ready);
+                    return Task.CompletedTask;
                 });
             }
 
@@ -85,9 +83,10 @@ namespace Eventfully.Core.UnitTests
             {
                 Handle<PizzaShippedEvent>((message, context) => {
                     if (State.ShippedAtUtc.HasValue)
-                        return;
+                        return Task.CompletedTask;
                     State.ShippedAtUtc = message.ShippedAt;
                     Become(OutForDelivery);
+                    return Task.CompletedTask;
                 });
             }
 
@@ -95,9 +94,10 @@ namespace Eventfully.Core.UnitTests
             {
                 Handle<PizzaDeliveredEvent>((message, context) => {
                     if (State.DeliveredAtUtc.HasValue)
-                        return;
+                        return Task.CompletedTask;
                     State.DeliveredAtUtc = message.DeliveredAt;
                     Become(Complete);
+                    return Task.CompletedTask;
                 });
             }
 
@@ -107,20 +107,22 @@ namespace Eventfully.Core.UnitTests
             }
         }
 
-        public class DuplicateHandlerProcess : ProcessManagerMachine<PizzaFullfilmentState, Guid>,
+        public class DuplicateHandlerProcess : ProcessManagerMachine<PizzaFulfillmentState, Guid>,
            IMachineMessageHandler<PizzaPaidForEvent>,
            IMachineMessageHandler<PizzaPreparedEvent>
         {
             public DuplicateHandlerProcess(){Become(Initial);}
             public void Initial() {
-                Handle<PizzaPreparedEvent>((message, context) => Become(Duplicate));
-                
+                Handle<PizzaPreparedEvent>((message, context) => {
+                    Become(Duplicate);
+                    return Task.CompletedTask;
+                 });
             }
             public void Duplicate()
             {
-                Handle<PizzaPreparedEvent>((message, context) => {});
-                Handle<PizzaPreparedEvent>((message, context) =>{});
-                Handle<PizzaPaidForEvent>((message, context) => {});
+                Handle<PizzaPreparedEvent>((message, context) => { return Task.CompletedTask; });
+                Handle<PizzaPreparedEvent>((message, context) => { return Task.CompletedTask; });
+                Handle<PizzaPaidForEvent> ((message, context) => { return Task.CompletedTask; });
             }
         }
 
@@ -157,7 +159,7 @@ namespace Eventfully.Core.UnitTests
         [Fact]
         public void Should_instantiate_state_on_new()
         {
-            var process = new PizzaFullfilmentProcess();
+            var process = new PizzaFulfillmentProcess();
             process.State.ShouldNotBeNull();
             process.State.CurrentState.ShouldBe("Ordered");
         }
@@ -167,7 +169,7 @@ namespace Eventfully.Core.UnitTests
         {
             var process = new DuplicateHandlerProcess();
             Should.Throw<InvalidOperationException>(
-               () => process.HandleCore(
+               () => process.Handle(
                     new PizzaPreparedEvent() { PreparedAt = DateTime.UtcNow },
                     _fixture.FakeContext)
             );
@@ -176,9 +178,9 @@ namespace Eventfully.Core.UnitTests
         [Fact]
         public void Should_throw_on_message_with_no_handler_in_state()
         {
-            var process = new PizzaFullfilmentProcess();
+            var process = new PizzaFulfillmentProcess();
             Should.Throw<InvalidProcessManagerStateException>(
-               () => process.HandleCore(
+               () => process.Handle(
                     new PizzaDeliveredEvent() { DeliveredAt = DateTime.UtcNow },
                     _fixture.FakeContext)
             );
@@ -187,53 +189,52 @@ namespace Eventfully.Core.UnitTests
         [Fact]
         public void Should_throw_on_set_state_with_invalid_state_string()
         {
-            var process = new PizzaFullfilmentProcess();
+            var process = new PizzaFulfillmentProcess();
             Should.Throw<Exception>(
-               () => process.SetState(new PizzaFullfilmentState() {  CurrentState = "InvalidStateName"})
+               () => process.SetState(new PizzaFulfillmentState() {  CurrentState = "InvalidStateName"})
             );
         }
 
         [Fact]
-        public void Should_leave_current_state_null_when_setState_with_null_current_state()
+        public void Should_leave_current_state_null_when_set_state_with_null()
         {
-            var process = new PizzaFullfilmentProcess();
-            process.SetState(new PizzaFullfilmentState() { CurrentState = null });
+            var process = new PizzaFulfillmentProcess();
+            process.SetState(new PizzaFulfillmentState() { CurrentState = null });
             process.State.CurrentState.ShouldBeNull();
         }
 
         [Fact]
         public void Should_throw_on_set_state_with_null_state()
         {
-            var process = new PizzaFullfilmentProcess();
+            var process = new PizzaFulfillmentProcess();
             Should.Throw<ArgumentNullException>(
                () => process.SetState(null)
             );
         }
 
-
         [Fact]
         public void Should_transition_on_message_to_completion()
         {
-            var process = new PizzaFullfilmentProcess();
+            var process = new PizzaFulfillmentProcess();
             process.State.CurrentState.ShouldBe("Ordered");
 
             var prepareDate = DateTime.UtcNow;
-            process.HandleCore(new PizzaPreparedEvent() { PreparedAt = prepareDate }, _fixture.FakeContext);
+            process.Handle(new PizzaPreparedEvent() { PreparedAt = prepareDate }, _fixture.FakeContext);
             process.State.CurrentState.ShouldBe("Ordered");
             process.State.PreparedAtUtc.ShouldBe(prepareDate);
 
             var payDate = DateTime.UtcNow;
-            process.HandleCore(new PizzaPaidForEvent() { PaidAt = payDate }, _fixture.FakeContext);
+            process.Handle(new PizzaPaidForEvent() { PaidAt = payDate }, _fixture.FakeContext);
             process.State.CurrentState.ShouldBe("Ready");
             process.State.PaidAtUtc.ShouldBe(payDate);
 
             var shipDate = DateTime.UtcNow;
-            process.HandleCore(new PizzaShippedEvent() { ShippedAt = shipDate }, _fixture.FakeContext);
+            process.Handle(new PizzaShippedEvent() { ShippedAt = shipDate }, _fixture.FakeContext);
             process.State.CurrentState.ShouldBe("OutForDelivery");
             process.State.ShippedAtUtc.ShouldBe(shipDate);
 
             var deliverDate = DateTime.UtcNow;
-            process.HandleCore(new PizzaDeliveredEvent() { DeliveredAt = deliverDate }, _fixture.FakeContext);
+            process.Handle(new PizzaDeliveredEvent() { DeliveredAt = deliverDate }, _fixture.FakeContext);
             process.State.CurrentState.ShouldBe("Complete");
             process.State.DeliveredAtUtc.ShouldBe(deliverDate);
             process.State.CompletedAtUtc.Value.ShouldBeGreaterThan(deliverDate);

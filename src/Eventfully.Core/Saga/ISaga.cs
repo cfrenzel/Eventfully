@@ -8,7 +8,7 @@ namespace Eventfully
     public interface ISaga
     {
         object State { get;}
-        //void SetState(object state);
+        void SetState(object state);
         object FindKey(IIntegrationMessage message, MessageMetaData meta);
     }
 
@@ -16,7 +16,7 @@ namespace Eventfully
     {
         new S State { get; }
         new K FindKey(IIntegrationMessage message, MessageMetaData meta);
-        //void SetState(S state);
+        void SetState(S state);
     }
 
     public class Saga<S, K> : ISaga<S, K>
@@ -38,12 +38,12 @@ namespace Eventfully
       
         public S State { get;  protected set; }
         object ISaga.State { get =>  State; }
-        //void ISaga.SetState(object state) { this.SetState((S)state); }
+        void ISaga.SetState(object state) { this.SetState((S)state); }
 
-        //public virtual void SetState(S state)
-        //{
-        //    this.State = state;
-       // }
+        public virtual void SetState(S state)
+        {
+            this.State = state;
+        }
 
      }
 }
