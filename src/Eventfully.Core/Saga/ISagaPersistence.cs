@@ -14,16 +14,19 @@ namespace Eventfully
 
     public interface ISagaPersistence<T, K> : ISagaPersistence
     {
-        Task LoadState(ISaga saga, K sagaId);
+        Task LoadState(ISaga<T,K> saga, K sagaId);
+        Task SaveState(ISaga<T,K> saga);
     }
 
     public abstract class SagaPersistece<T, K> : ISagaPersistence<T, K>
     {
-        public abstract Task SaveState(ISaga saga);
+        public abstract Task SaveState(ISaga<T,K> saga);
 
-        public abstract Task LoadState(ISaga saga, K sagaId);
+        public abstract Task LoadState(ISaga<T,K> saga, K sagaId);
 
-        Task ISagaPersistence.LoadState(ISaga saga, object sagaId) => LoadState(saga, (K)sagaId);
+        Task ISagaPersistence.LoadState(ISaga saga, object sagaId) => LoadState((ISaga<T,K>) saga, (K) sagaId);
+        
+        Task ISagaPersistence.SaveState(ISaga saga) => SaveState((ISaga<T, K>)saga);
     }
 
 }
