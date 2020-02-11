@@ -62,21 +62,24 @@ namespace Eventfully.Handlers
                             throw new ApplicationException($"Couldn't find saga for Handler: {context.Props.Type}, SagaType: {context.Props.SagaType}");
  
                         var persistence = scope.GetInstance(sagaProps.SagaPersistenceType) as ISagaPersistence;
-                        var handler = scope.GetInstance<IMessageHandler<T>>();
-
-                        if (sagaProps.HasCustomHandler)
+                        
+                        if (sagaProps.HasCustomHandler)//state machine saga
                         {
                             var customHandler = scope.GetInstance<ICustomMessageHandler<T>>();
                             var saga = customHandler as ISaga;
                             await persistence.LoadOrCreateState(saga, saga.FindKey(message, context.MetaData));
-                            if (handler is ITriggeredBy<T>)
+                            if (saga is ITriggeredBy<T>)
+                            {
+                                var handler = scope.GetInstance<IMessageHandler<T>>(); 
                                 await handler.Handle(message, context);
+                            }
                             else
                                 await customHandler.Handle(message, context);
                             await persistence.AddOrUpdateState(saga);
                         }
-                        else
+                        else // simple saga
                         {
+                            var handler = scope.GetInstance<IMessageHandler<T>>();
                             var saga = handler as ISaga;
                             await persistence.LoadOrCreateState(saga, saga.FindKey(message, context.MetaData));
                             await handler.Handle(message, context);
