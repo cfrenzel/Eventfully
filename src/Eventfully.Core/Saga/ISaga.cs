@@ -38,7 +38,12 @@ namespace Eventfully
       
         public S State { get;  protected set; }
         object ISaga.State { get =>  State; }
-        void ISaga.SetState(object state) { this.SetState((S)state); }
+        void ISaga.SetState(object state) {
+            if (state == null)
+                SetState((S)Activator.CreateInstance(typeof(S)));
+            //throw new ArgumentNullException("SetState requires a State object.  State cannot be null");
+            this.SetState((S)state);
+        }
 
         public virtual void SetState(S state)
         {
