@@ -18,7 +18,7 @@ namespace Eventfully
         Task AddOrUpdateState(ISaga<T,K> saga);
     }
 
-    public abstract class SagaPersistece<T, K> : ISagaPersistence<T, K>
+    public abstract class SagaPersistence<T, K> : ISagaPersistence<T, K>
     {
         public abstract Task AddOrUpdateState(ISaga<T,K> saga);
 
