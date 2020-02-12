@@ -11,6 +11,7 @@ using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
 using Eventfully.Outboxing;
 using System.Threading;
+using System.Threading.Tasks.Dataflow;
 
 namespace Eventfully.EFCoreOutbox
 {
@@ -43,7 +44,8 @@ namespace Eventfully.EFCoreOutbox
     {
         private static ILogger<Outbox<T>> _log = Logging.CreateLogger<Outbox<T>>();
 
-        private readonly BlockingCollection<OutboxMessage> _transientDispatchQueue = new BlockingCollection<OutboxMessage>();
+        //private readonly BlockingCollection<OutboxMessage> _transientDispatchQueue = new BlockingCollection<OutboxMessage>();
+        private readonly BufferBlock<OutboxMessage> _transientDispatchQueue = new BufferBlock<OutboxMessage>(new DataflowBlockOptions() { });
         private readonly SqlConnectionFactory _dbConnection;
         private readonly IRetryIntervalStrategy _retryStrategy;
 
@@ -122,14 +124,18 @@ namespace Eventfully.EFCoreOutbox
                     }
                 }//using
 
-                foreach(var outboxMessage in outboxMessages)
-                    await _relay(outboxMessage, dispatcher);
+                var block = new ActionBlock<OutboxMessage>(outboxMessage => _relay(outboxMessage, dispatcher),
+                    new ExecutionDataflowBlockOptions { MaxDegreeOfParallelism = this.MaxConcurrency }
+                );
 
-                //Parallel.ForEach(outboxMessages, new ParallelOptions { MaxDegreeOfParallelism = this.MaxConcurrency },
-                //async outboxMessage =>
-                //{
+                foreach (var outboxMessage in outboxMessages)
+                    block.Post(outboxMessage);
+                block.Complete();
+                await block.Completion;
+                
+                //foreach (var outboxMessage in outboxMessages)
                 //    await _relay(outboxMessage, dispatcher);
-                //});
+
                 return new OutboxRelayResult(outboxMessages != null ? outboxMessages.Count() : 0, this.BatchSize);
             }
             catch (Exception ex)
@@ -365,7 +371,8 @@ namespace Eventfully.EFCoreOutbox
         public void DispatchTransientMessages(IEnumerable<OutboxMessage> outboxMessages)
         {
             foreach(var message in outboxMessages)
-                _transientDispatchQueue.Add(message);
+                _transientDispatchQueue.Post(message);
+            //_transientDispatchQueue.Add(message);
         }
 
         private CancellationTokenSource _outboxTokenSource;
@@ -381,26 +388,34 @@ namespace Eventfully.EFCoreOutbox
 
             if (!this.DisableTransientDispatch)
             {
-               
-                _outboxTransientTask = Task.Run( async () =>
+                _outboxTransientTask = Task.Run(async () =>
                 {
-                    while (!_transientDispatchQueue.IsCompleted && !ct.IsCancellationRequested)
+                    while (!ct.IsCancellationRequested && await _transientDispatchQueue.OutputAvailableAsync(ct))
                     {
-                        var outboxMessage = _transientDispatchQueue.Take(ct);
-                        if (outboxMessage.SkipTransientDispatch)
-                            return;
+                        var outboxMessage = await _transientDispatchQueue.ReceiveAsync();
                         await _relay(outboxMessage, dispatcher, true);
                     }
-
-                    //Parallel.ForEach(_transientDispatchQueue.GetConsumingPartitioner(),
-                    //    new ParallelOptions { CancellationToken = ct, MaxDegreeOfParallelism = this.MaxConcurrency },
-                    //    async outboxMessage =>
-                    //    {
-                    //        if (outboxMessage.SkipTransientDispatch)
-                    //            return;
-                    //        await _relay(outboxMessage, dispatcher, true);
-                    //    });
                 }, ct);
+                //_outboxTransientTask = Task.Run( async () =>
+                //{
+                //    while (!_transientDispatchQueue.IsCompleted && !ct.IsCancellationRequested)
+                //    {
+                //        var block = new ActionBlock<OutboxMessage>(outboxMessage => _relay(outboxMessage, dispatcher),
+                //            new ExecutionDataflowBlockOptions { MaxDegreeOfParallelism = this.MaxConcurrency }
+                //        );
+
+                //        foreach (var outboxMessage in outboxMessages)
+                //            block.Post(outboxMessage);
+                //        block.Complete();
+                //        await block.Completion;
+
+
+                //        //var outboxMessage = _transientDispatchQueue.Take(ct);
+                //        //if (outboxMessage.SkipTransientDispatch)
+                //        //    return;
+                //        //await _relay(outboxMessage, dispatcher, true);
+                //    }
+                //}, ct);
             }
 
             return Task.CompletedTask;
@@ -410,50 +425,9 @@ namespace Eventfully.EFCoreOutbox
         {
             if (_outboxTokenSource != null && !_outboxTokenSource.IsCancellationRequested)
                 _outboxTokenSource.Cancel();
-
-            return _outboxTransientTask;
-        }
-    }
-
-
-    /// <summary>
-    /// Helper for using BlockingCollection with Parallel.Foreach
-    /// https://devblogs.microsoft.com/pfxteam/parallelextensionsextras-tour-4-blockingcollectionextensions/
-    /// </summary>
-    /// <typeparam name="T"></typeparam>
-    /// <param name="collection"></param>
-    /// <returns></returns>
-    public static class Extensions
-    {
-        public static Partitioner<T> GetConsumingPartitioner<T>(this BlockingCollection<T> collection)
-        {
-            return new BlockingCollectionPartitioner<T>(collection);
-        }
-
-        private class BlockingCollectionPartitioner<T> : Partitioner<T>
-        {
-            private BlockingCollection<T> _collection;
-            public override bool SupportsDynamicPartitions => true;
-            internal BlockingCollectionPartitioner(BlockingCollection<T> collection)
-            {
-                if (collection == null)
-                    throw new ArgumentNullException("collection");
-                _collection = collection;
-            }
+            _transientDispatchQueue.Complete();
            
-            public override IList<IEnumerator<T>> GetPartitions(int partitionCount)
-            {
-                if (partitionCount < 1)
-                    throw new ArgumentOutOfRangeException("partitionCount");
-
-                var dynamicPartitioner = GetDynamicPartitions();
-                return Enumerable.Range(0, partitionCount).Select(_ => dynamicPartitioner.GetEnumerator()).ToArray();
-            }
-
-            public override IEnumerable<T> GetDynamicPartitions()
-            {
-                return _collection.GetConsumingEnumerable();
-            }
+            return Task.WhenAll(_outboxTransientTask, _transientDispatchQueue.Completion);
         }
     }
 }
