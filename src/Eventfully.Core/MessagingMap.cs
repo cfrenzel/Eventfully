@@ -163,13 +163,13 @@ namespace Eventfully
 
         public static void AddSaga(SagaProperties props)
         {
-            _sagaTypePropMap.TryAdd(props.Type, props);
+            _sagaTypePropMap.TryAdd(props.SagaType, props);
 
             //link to the saga from the messageType
             foreach (var messageType in props.MessageTypes)
             {
                 if(_messageTypePropMap.ContainsKey(messageType))
-                    _messageTypePropMap[messageType].SagaType = props.Type;
+                    _messageTypePropMap[messageType].SagaType = props.SagaType;
             }
         }
 
@@ -267,8 +267,7 @@ namespace Eventfully
 
     public class SagaProperties
     {
-        public Type Type { get; set; }
-
+        public Type SagaType { get; set; }
         public Type StateType { get; set; }
         public Type KeyType { get; set; }
         public Type SagaPersistenceType { get; set; }
@@ -279,9 +278,9 @@ namespace Eventfully
         public SagaProperties()
         { }
 
-        public SagaProperties(Type type, Type keyType, Type stateType, Type sagaPersistenceType , List<Type> messageTypes, bool hasCustomhandler = false)
+        public SagaProperties(Type sagaType, Type keyType, Type stateType, Type sagaPersistenceType , List<Type> messageTypes, bool hasCustomhandler = false)
         {
-            this.Type = type;
+            this.SagaType = sagaType;
             this.KeyType = keyType;
             this.StateType = stateType;
             this.SagaPersistenceType = sagaPersistenceType;

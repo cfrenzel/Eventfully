@@ -61,7 +61,7 @@ namespace Eventfully.Handlers
                         var sagaProps = MessagingMap.GetSagaProps(context.Props.SagaType) ??
                             throw new ApplicationException($"Couldn't find saga for Handler: {context.Props.Type}, SagaType: {context.Props.SagaType}");
                         
-                        var saga = (ISaga)scope.GetInstance(sagaProps.Type);
+                        var saga = (ISaga)scope.GetInstance(sagaProps.SagaType);
                         
                         var persistence = scope.GetInstance(sagaProps.SagaPersistenceType) as ISagaPersistence;
                         await persistence.LoadOrCreateState(saga, saga.FindKey(message, context.MetaData));
