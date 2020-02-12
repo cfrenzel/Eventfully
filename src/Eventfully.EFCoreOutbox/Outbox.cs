@@ -378,16 +378,25 @@ namespace Eventfully.EFCoreOutbox
 
             if (!this.DisableTransientDispatch)
             {
-                _outboxTransientTask = Task.Run(() =>
+               
+                _outboxTransientTask = Task.Run( async () =>
                 {
-                   Parallel.ForEach(_transientDispatchQueue.GetConsumingPartitioner(),
-                       new ParallelOptions { CancellationToken = ct, MaxDegreeOfParallelism = this.MaxConcurrency },
-                       async outboxMessage =>
-                       {
-                           if (outboxMessage.SkipTransientDispatch)
-                               return;
-                           await _relay(outboxMessage, dispatcher, true);
-                       });
+                    while (!_transientDispatchQueue.IsCompleted && !ct.IsCancellationRequested)
+                    {
+                        var outboxMessage = _transientDispatchQueue.Take(ct);
+                        if (outboxMessage.SkipTransientDispatch)
+                            return;
+                        await _relay(outboxMessage, dispatcher, true);
+                    }
+
+                    //Parallel.ForEach(_transientDispatchQueue.GetConsumingPartitioner(),
+                    //    new ParallelOptions { CancellationToken = ct, MaxDegreeOfParallelism = this.MaxConcurrency },
+                    //    async outboxMessage =>
+                    //    {
+                    //        if (outboxMessage.SkipTransientDispatch)
+                    //            return;
+                    //        await _relay(outboxMessage, dispatcher, true);
+                    //    });
                 }, ct);
             }
 
