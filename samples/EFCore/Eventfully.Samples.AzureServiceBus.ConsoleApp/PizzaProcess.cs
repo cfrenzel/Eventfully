@@ -9,27 +9,29 @@ using System.Threading.Tasks;
 
 namespace Eventfully.Samples.AzureServiceBus.ConsoleApp
 {
+      
     public class PizzaFulfillmentProcess : ProcessManagerMachine<PizzaFulfillmentStatus, Guid>,
        ITriggeredBy<PizzaOrderedEvent>,
        IMachineMessageHandler<PizzaPaidForEvent>,
        IMachineMessageHandler<PizzaPreparedEvent>,
        IMachineMessageHandler<PizzaDeliveredEvent>
-    {
+    { 
         private readonly ApplicationDbContext _db;
         private readonly ILogger<PizzaFulfillmentProcess> _log;
         private readonly IMessagingClient _messageClient;
-
+         
         public PizzaFulfillmentProcess(ApplicationDbContext db, IMessagingClient messageClient, ILogger<PizzaFulfillmentProcess> log)
-        {
+        { 
             _db = db;
             _log = log;
             _messageClient = messageClient;
-
-            this.MapIdFor<PizzaOrderedEvent>((m, md) => m.OrderId);
+                   
+            this.MapIdFor< PizzaOrderedEvent>((m, md) => m.OrderId);
             this.MapIdFor<PizzaPaidForEvent>((m, md) => m.OrderId);
             this.MapIdFor<PizzaPreparedEvent>((m, md) => m.OrderId);
             this.MapIdFor<PizzaDeliveredEvent>((m, md) => m.OrderId);
         }
+
 
         public Task Handle(PizzaOrderedEvent ev, MessageContext context)
         {
