@@ -122,11 +122,14 @@ namespace Eventfully.EFCoreOutbox
                     }
                 }//using
 
-                Parallel.ForEach(outboxMessages, new ParallelOptions { MaxDegreeOfParallelism = this.MaxConcurrency },
-                async outboxMessage =>
-                {
+                foreach(var outboxMessage in outboxMessages)
                     await _relay(outboxMessage, dispatcher);
-                });
+
+                //Parallel.ForEach(outboxMessages, new ParallelOptions { MaxDegreeOfParallelism = this.MaxConcurrency },
+                //async outboxMessage =>
+                //{
+                //    await _relay(outboxMessage, dispatcher);
+                //});
                 return new OutboxRelayResult(outboxMessages != null ? outboxMessages.Count() : 0, this.BatchSize);
             }
             catch (Exception ex)
