@@ -35,13 +35,15 @@ namespace Eventfully.Semaphore.SqlServer.IntegrationTests
         {
             this._fixture = fixture;
             this._log = log;
-            ResetCheckpoint().GetAwaiter().GetResult();//reset after every run
+        }
+    
+        public override async Task InitializeAsync()
+        {
+            await base.InitializeAsync();
+            await ResetCheckpoint();
         }
 
-        public class Fixture
-        {
-            public Fixture() { }
-        }
+        public class Fixture {}
 
         [Fact]
         public async Task Should_create_semaphore()

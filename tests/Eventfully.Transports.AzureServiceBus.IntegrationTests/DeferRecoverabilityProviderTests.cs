@@ -19,7 +19,8 @@ namespace Eventfully.Transports.AzureServieBus.IntegrationTests
     using static IntegrationTestFixture;
     
     [Collection("Sequential")]
-    public class DeferRecoverabilityProviderTests : IntegrationTestBase, IClassFixture<DeferRecoverabilityProviderTests.Fixture>
+    public class DeferRecoverabilityProviderTests : IntegrationTestBase,
+        IClassFixture<DeferRecoverabilityProviderTests.Fixture>
     {
         private readonly Fixture _fixture;
         private readonly ITestOutputHelper _log;
@@ -28,21 +29,14 @@ namespace Eventfully.Transports.AzureServieBus.IntegrationTests
         {
             this._fixture = fixture;
             this._log = log;
-
-            IntegrationTestFixture.ClearQueue(IntegrationTestFixture.QueueEndpoint).GetAwaiter().GetResult();
-
-            //using (var scope = NewScope())
-            //{
-            //}
+       }
+        public override async Task InitializeAsync()
+        {
+            await base.InitializeAsync();
+            await IntegrationTestFixture.ClearQueue(IntegrationTestFixture.QueueEndpoint);
         }
-
-        public class Fixture
-        { 
-
-        }
-
-       
-     
+      
+        public class Fixture{}
 
         [Fact]
         public async Task Should_defer_and_queue_control_message()

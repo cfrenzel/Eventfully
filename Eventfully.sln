@@ -35,9 +35,15 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Eventfully.Transports.Azure
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Eventfully.Transports.AzureServiceBus.UnitTests", "tests\Eventfully.Transports.AzureServiceBus.UnitTests.UnitTests\Eventfully.Transports.AzureServiceBus.UnitTests.csproj", "{4F9C0E0A-D4C3-46E4-BF57-AADE5B108BBD}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Eventfully.Semaphore.SqlServer", "src\Eventfully.Semaphore.SqlServer\Eventfully.Semaphore.SqlServer.csproj", "{3C31D9F3-EBD3-427C-8A9D-A4D6570A0F04}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Eventfully.Semaphore.SqlServer", "src\Eventfully.Semaphore.SqlServer\Eventfully.Semaphore.SqlServer.csproj", "{3C31D9F3-EBD3-427C-8A9D-A4D6570A0F04}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Eventfully.Semaphore.SqlServer.IntegrationTests", "tests\Eventfully.Semaphore.SqlServer.IntegrationTests\Eventfully.Semaphore.SqlServer.IntegrationTests.csproj", "{1598DEF4-6814-4FA2-8E99-C60DC7716DA8}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Eventfully.Core.Analyzers", "src\Eventfully.Core.Analyzers\Eventfully.Core.Analyzers\Eventfully.Core.Analyzers.csproj", "{5C0B7602-E562-4EAC-B46F-52D99E196E0D}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Eventfully.Core.Analyzers.Test", "src\Eventfully.Core.Analyzers\Eventfully.Core.Analyzers.Test\Eventfully.Core.Analyzers.Test.csproj", "{44F1D95B-7DCE-4693-A407-9AF64B1AAF24}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Eventfully.Core.Analyzers.Vsix", "src\Eventfully.Core.Analyzers\Eventfully.Core.Analyzers.Vsix\Eventfully.Core.Analyzers.Vsix.csproj", "{8DE2E3AD-9F5D-454E-86A9-2D68519737A0}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -103,6 +109,18 @@ Global
 		{1598DEF4-6814-4FA2-8E99-C60DC7716DA8}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{1598DEF4-6814-4FA2-8E99-C60DC7716DA8}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{1598DEF4-6814-4FA2-8E99-C60DC7716DA8}.Release|Any CPU.Build.0 = Release|Any CPU
+		{5C0B7602-E562-4EAC-B46F-52D99E196E0D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5C0B7602-E562-4EAC-B46F-52D99E196E0D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5C0B7602-E562-4EAC-B46F-52D99E196E0D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5C0B7602-E562-4EAC-B46F-52D99E196E0D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{44F1D95B-7DCE-4693-A407-9AF64B1AAF24}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{44F1D95B-7DCE-4693-A407-9AF64B1AAF24}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{44F1D95B-7DCE-4693-A407-9AF64B1AAF24}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{44F1D95B-7DCE-4693-A407-9AF64B1AAF24}.Release|Any CPU.Build.0 = Release|Any CPU
+		{8DE2E3AD-9F5D-454E-86A9-2D68519737A0}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8DE2E3AD-9F5D-454E-86A9-2D68519737A0}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8DE2E3AD-9F5D-454E-86A9-2D68519737A0}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8DE2E3AD-9F5D-454E-86A9-2D68519737A0}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -117,6 +135,7 @@ Global
 		{332714E8-A324-47CF-855C-321D432BCA0D} = {4B2CB6B5-234C-4E71-B21F-521447B7A78B}
 		{4F9C0E0A-D4C3-46E4-BF57-AADE5B108BBD} = {4B2CB6B5-234C-4E71-B21F-521447B7A78B}
 		{1598DEF4-6814-4FA2-8E99-C60DC7716DA8} = {4B2CB6B5-234C-4E71-B21F-521447B7A78B}
+		{44F1D95B-7DCE-4693-A407-9AF64B1AAF24} = {4B2CB6B5-234C-4E71-B21F-521447B7A78B}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {4F1C7EF5-369B-4779-A5EA-0CE3CD2250DE}
