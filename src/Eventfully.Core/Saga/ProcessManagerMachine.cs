@@ -29,11 +29,11 @@ namespace Eventfully
         { }
     }
 
+   
     public abstract class ProcessManagerMachine<S, K> :  Saga<S, K>
         where S: IProcessManagerMachineState
     {
-        private HandlerState _currentHandlers; 
-
+        private HandlerState _currentHandlers { get; set; }
         public ProcessManagerMachine(){}
 
         public override void SetState(S state)
@@ -70,6 +70,9 @@ namespace Eventfully
         public Task Handle(IIntegrationMessage message, MessageContext context)
         {
             var messageType = message.GetType();
+            if (_currentHandlers == null)
+                throw new InvalidProcessManagerStateException(null, messageType);
+
             var handler = _currentHandlers.GetHandler(messageType);
             if (handler == null)
                 throw new InvalidProcessManagerStateException(_currentHandlers.StateName, messageType);

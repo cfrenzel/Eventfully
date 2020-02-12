@@ -70,7 +70,7 @@ namespace Eventfully.Handlers
                             await persistence.LoadOrCreateState(saga, saga.FindKey(message, context.MetaData));
                             if (saga is ITriggeredBy<T>)
                             {
-                                var handler = scope.GetInstance<IMessageHandler<T>>(); 
+                                var handler = (IMessageHandler<T>)saga; 
                                 await handler.Handle(message, context);
                             }
                             else
@@ -86,7 +86,7 @@ namespace Eventfully.Handlers
                             await persistence.AddOrUpdateState(saga);
                         }
                     }
-                    else // simple case
+                    else // basic handler class
                     {
                         var handler = scope.GetInstance<IMessageHandler<T>>();
                         await handler.Handle(message, context);
