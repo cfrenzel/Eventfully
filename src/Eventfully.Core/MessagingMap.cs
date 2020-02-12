@@ -156,7 +156,7 @@ namespace Eventfully
             if (_sagaTypePropMap.ContainsKey(sagaType))
                 throw new InvalidOperationException($"Duplicate Saga Type registered.  SagaType: {sagaType}");
 
-            var props = new SagaProperties(sagaType, sagaKeyType, sagaStateType, sagaPersistenceType, handledMessageTypes);
+            var props = new SagaProperties(sagaType, sagaKeyType, sagaStateType, sagaPersistenceType, handledMessageTypes, hasCustomHandler);
             AddSaga(props);
             return props;
         }
