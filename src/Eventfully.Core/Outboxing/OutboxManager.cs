@@ -97,14 +97,14 @@ namespace Eventfully.Outboxing
 
         ~OutboxManager()  // finalizer
         {
-            if (_outboxConsumerSemaphore != null)
-                _outboxConsumerSemaphore.TryRelease(this._uniqueIdentifier).GetAwaiter().GetResult();
+            //if (_outboxConsumerSemaphore != null)
+            //    _outboxConsumerSemaphore.TryRelease(this._uniqueIdentifier).GetAwaiter().GetResult();
         }
 
         public void Dispose()
         {
-            if (_outboxConsumerSemaphore != null)
-                _outboxConsumerSemaphore.TryRelease(this._uniqueIdentifier).GetAwaiter().GetResult();
+            //if (_outboxConsumerSemaphore != null)
+            //    _outboxConsumerSemaphore.TryRelease(this._uniqueIdentifier).GetAwaiter().GetResult();
 
             _dispatchTimer?.Dispose();
             _cleanUpTimer?.Dispose();

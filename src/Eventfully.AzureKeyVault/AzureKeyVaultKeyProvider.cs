@@ -38,19 +38,7 @@ namespace Eventfully
                 var client = new KeyVaultClient(
                     new KeyVaultClient.AuthenticationCallback(
                         azureServiceTokenProvider.KeyVaultTokenCallback));
-
-               
-                //var azureServiceTokenProvider1 = new AzureServiceTokenProvider();
-                //var client = new KeyVaultClient(new KeyVaultClient.AuthenticationCallback(azureServiceTokenProvider1.KeyVaultTokenCallback));
-                //_clients.Add(_keyVaultUrl, client);
-                //var secret = kv.GetSecretAsync(_keyVaultUrl, "test2").GetAwaiter().GetResult();
-                //_clients.Add(_keyVaultUrl, client);
-
-                // Create a new secret client using the default credential from Azure.Identity using environment variables previously set,
-                // including AZURE_CLIENT_ID, AZURE_CLIENT_SECRET, and AZURE_TENANT_ID.
-                //var client = new SecretClient(vaultUri: new Uri(_keyVaultUrl), credential: new DefaultAzureCredential());
-                //_clients.Add(_keyVaultUrl, client);
-                return client;
+                 return client;
             }
         }
     }
