@@ -61,6 +61,7 @@ namespace Eventfully
                         .WithTransientLifetime()
                     .AddClasses(t => t.AssignableTo(typeof(ISaga<,>)))
                         .AsImplementedInterfaces()
+                        .AsSelf()
                         .WithTransientLifetime()
                      .AddClasses(t => t.AssignableTo(typeof(ISagaPersistence<,>)))
                         .AsImplementedInterfaces()

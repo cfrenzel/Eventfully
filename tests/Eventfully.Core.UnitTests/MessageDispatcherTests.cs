@@ -133,7 +133,8 @@ namespace Eventfully.Core.UnitTests
             var fakeSagaPersistence = A.Fake<ISagaPersistence<TestState, Guid>>();
 
             MessagingMap.AddSaga(new SagaProperties(
-                fakeSaga.GetType(), typeof(Guid),
+                fakeSaga.GetType(),
+                typeof(Guid),
                 typeof(TestState),
                 fakeSagaPersistence.GetType(),
                 new List<Type> { typeof(TestMessage) },
