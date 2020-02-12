@@ -102,8 +102,9 @@ namespace Eventfully.Core.UnitTests
             A.CallTo(() => this.FakeServiceFactory.CreateScope()).Returns(this.FakeServiceFactory);
             A.CallTo(() => this.FakeServiceFactory.GetInstance(typeof(IOutboxSession))).Returns(this.FakeOutboxSession);
             A.CallTo(() => this.FakeServiceFactory.GetInstance(fakeSagaPersistence.GetType())).Returns(fakeSagaPersistence);
-            A.CallTo(() => this.FakeServiceFactory.GetInstance(typeof(ICustomMessageHandler<TestMessage>))).Returns(fakeStateMachine as ICustomMessageHandler<TestMessage>);
-            A.CallTo(() => this.FakeServiceFactory.GetInstance(typeof(IMessageHandler<TestMessage>))).Returns(fakeStateMachine as IMessageHandler<TestMessage>);
+            A.CallTo(() => this.FakeServiceFactory.GetInstance(fakeStateMachine.GetType())).Returns(fakeStateMachine);
+            //A.CallTo(() => this.FakeServiceFactory.GetInstance(typeof(ICustomMessageHandler<TestMessage>))).Returns(fakeStateMachine as ICustomMessageHandler<TestMessage>);
+            //A.CallTo(() => this.FakeServiceFactory.GetInstance(typeof(IMessageHandler<TestMessage>))).Returns(fakeStateMachine as IMessageHandler<TestMessage>);
 
             MessageDispatcher dispatcher = new MessageDispatcher(this.FakeServiceFactory);
             await dispatcher.Dispatch(testMessage, messageContext);
@@ -149,7 +150,8 @@ namespace Eventfully.Core.UnitTests
             A.CallTo(() => this.FakeServiceFactory.CreateScope()).Returns(this.FakeServiceFactory);
             A.CallTo(() => this.FakeServiceFactory.GetInstance(typeof(IOutboxSession))).Returns(this.FakeOutboxSession);
             A.CallTo(() => this.FakeServiceFactory.GetInstance(fakeSagaPersistence.GetType())).Returns(fakeSagaPersistence);
-            A.CallTo(() => this.FakeServiceFactory.GetInstance(typeof(IMessageHandler<TestMessage>))).Returns(fakeSaga as IMessageHandler<TestMessage>);
+            A.CallTo(() => this.FakeServiceFactory.GetInstance(fakeSaga.GetType())).Returns(fakeSaga);
+            //A.CallTo(() => this.FakeServiceFactory.GetInstance(typeof(IMessageHandler<TestMessage>))).Returns(fakeSaga as IMessageHandler<TestMessage>);
 
             MessageDispatcher dispatcher = new MessageDispatcher(this.FakeServiceFactory);
             await dispatcher.Dispatch(testMessage, messageContext);

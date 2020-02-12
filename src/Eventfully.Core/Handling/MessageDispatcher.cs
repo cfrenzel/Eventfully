@@ -60,31 +60,18 @@ namespace Eventfully.Handlers
                     {
                         var sagaProps = MessagingMap.GetSagaProps(context.Props.SagaType) ??
                             throw new ApplicationException($"Couldn't find saga for Handler: {context.Props.Type}, SagaType: {context.Props.SagaType}");
- 
-                        var persistence = scope.GetInstance(sagaProps.SagaPersistenceType) as ISagaPersistence;
                         
-                        if (sagaProps.HasCustomHandler)//state machine saga
-                        {
-                            var customHandler = scope.GetInstance<ICustomMessageHandler<T>>();
-                            var saga = customHandler as ISaga;
-                            await persistence.LoadOrCreateState(saga, saga.FindKey(message, context.MetaData));
-                            if (saga is ITriggeredBy<T>)
-                            {
-                                var handler = (IMessageHandler<T>)saga; 
-                                await handler.Handle(message, context);
-                            }
-                            else
-                                await customHandler.Handle(message, context);
-                            await persistence.AddOrUpdateState(saga);
-                        }
-                        else // simple saga
-                        {
-                            var handler = scope.GetInstance<IMessageHandler<T>>();
-                            var saga = handler as ISaga;
-                            await persistence.LoadOrCreateState(saga, saga.FindKey(message, context.MetaData));
-                            await handler.Handle(message, context);
-                            await persistence.AddOrUpdateState(saga);
-                        }
+                        var saga = (ISaga)scope.GetInstance(sagaProps.Type);
+                        
+                        var persistence = scope.GetInstance(sagaProps.SagaPersistenceType) as ISagaPersistence;
+                        await persistence.LoadOrCreateState(saga, saga.FindKey(message, context.MetaData));
+
+                        if (saga is IMessageHandler<T>)//includes ITriggeredBy<T>
+                            await ((IMessageHandler<T>)saga).Handle(message, context);
+                        else if(saga is ICustomMessageHandler<T>)
+                            await ((ICustomMessageHandler<T>)saga).Handle(message, context); 
+                        
+                        await persistence.AddOrUpdateState(saga);
                     }
                     else // basic handler class
                     {
