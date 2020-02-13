@@ -62,7 +62,7 @@ namespace Eventfully.Core.Analyzers {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Type names should be all uppercase..
+        ///   Looks up a localized string similar to Should have MapIdFor for each event handled.
         /// </summary>
         internal static string AnalyzerDescription {
             get {

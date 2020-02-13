@@ -11,4 +11,8 @@
     <PackageReference Include="Polly" Version="7.1.1" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\..\analyzers\Eventfully.Core.Analyzers\Eventfully.Core.Analyzers\Eventfully.Core.Analyzers.csproj" />
+  </ItemGroup>
+
 </Project>

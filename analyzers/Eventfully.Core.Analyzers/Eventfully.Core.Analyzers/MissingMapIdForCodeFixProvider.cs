@@ -16,14 +16,14 @@ using Microsoft.CodeAnalysis.Formatting;
 
 namespace Eventfully.Core.Analyzers
 {
-    [ExportCodeFixProvider(LanguageNames.CSharp, Name = nameof(EventfullyCoreAnalyzersCodeFixProvider)), Shared]
-    public class EventfullyCoreAnalyzersCodeFixProvider : CodeFixProvider
+    [ExportCodeFixProvider(LanguageNames.CSharp, Name = nameof(MissingMapIdForCodeFixProvider)), Shared]
+    public class MissingMapIdForCodeFixProvider : CodeFixProvider
     {
         private const string title = "Add MapIdFor<> to constructor";
 
         public sealed override ImmutableArray<string> FixableDiagnosticIds
         {
-            get { return ImmutableArray.Create(EventfullyCoreAnalyzersAnalyzer.DiagnosticId); }
+            get { return ImmutableArray.Create(MissingMapIdForAnalyzer.DiagnosticId); }
         }
 
         public sealed override FixAllProvider GetFixAllProvider()
