@@ -9,7 +9,7 @@ using Eventfully.Core.Analyzers;
 namespace Eventfully.Core.Analyzers.Test
 {
     [TestClass]
-    public class UnitTest : CodeFixVerifier
+    public class MissingMapIdForAnalyzerTests : CodeFixVerifier
     {
 
 
@@ -109,20 +109,15 @@ namespace Eventfully.Core.Analyzers.Test
             VerifyCSharpFix(test, fixtest, null, true);
         }
 
-        //Diagnostic and CodeFix both triggered and checked for
-        [TestMethod]
-        public void Should_find_events_mapped_but_not_handled()
-        {
-            throw new NotImplementedException();
-        }
+       
         protected override CodeFixProvider GetCSharpCodeFixProvider()
         {
-            return new EventfullyCoreAnalyzersCodeFixProvider();
+            return new MissingMapIdForCodeFixProvider();
         }
 
         protected override DiagnosticAnalyzer GetCSharpDiagnosticAnalyzer()
         {
-            return new EventfullyCoreAnalyzersAnalyzer();
+            return new MissingMapIdForAnalyzer();
         }
     }
 
