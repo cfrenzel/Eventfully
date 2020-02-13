@@ -13,7 +13,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Eventfully.Core.Analyzers\Eventfully.Core.Analyzers.csproj" />
+    <ProjectReference Include="..\..\analyzers\Eventfully.Core.Analyzers\Eventfully.Core.Analyzers\Eventfully.Core.Analyzers.csproj" />
+    <ProjectReference Include="..\..\src\Eventfully.Core\Eventfully.Core.csproj" />
   </ItemGroup>
 
 </Project>
