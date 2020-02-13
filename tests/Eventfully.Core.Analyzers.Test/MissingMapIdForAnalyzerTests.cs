@@ -144,7 +144,7 @@ namespace Eventfully.Core.Analyzers.Test
 
         //Diagnostic and CodeFix both triggered and checked for
         [TestMethod]
-        public void Should_fine_missing_handlers_for_mapped_events_in_saga()
+        public void Should_find_missing_handlers_for_mapped_events_in_saga()
         {
             var test =
 @"using System;

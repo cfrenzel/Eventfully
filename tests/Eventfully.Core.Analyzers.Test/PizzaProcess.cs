@@ -5,21 +5,21 @@ using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 
-namespace Eventfully.Core.Analyzers.Test
+namespace Eventfully.Core.Analyzers.Test 
 {  
      /// <summary>
      /// This is included as a reminder to make changes in the Analyzer/code fixer when changes are made to the 
      /// process manager related interfaces
-     /// </summary>      
+     /// </summary>         
     public class PizzaFulfillmentProcess : ProcessManagerMachine<PizzaFulfillmentStatus, Guid>,
        ITriggeredBy<PizzaOrderedEvent>,
        IMachineMessageHandler<PizzaPaidForEvent>,
        IMachineMessageHandler<PizzaPreparedEvent>,
-       IMachineMessageHandler<PizzaDeliveredEvent>
+       IMachineMessageHandler<PizzaDeliveredEvent> 
     {  
         private readonly ILogger<PizzaFulfillmentProcess> _log;
         private readonly IMessagingClient _messageClient;
-         
+          
         public PizzaFulfillmentProcess(IMessagingClient messageClient, ILogger<PizzaFulfillmentProcess> log)
         { 
             _log = log;
