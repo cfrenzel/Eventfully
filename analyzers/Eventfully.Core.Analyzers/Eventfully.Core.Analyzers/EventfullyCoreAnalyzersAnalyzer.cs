@@ -90,7 +90,7 @@ namespace Eventfully.Core.Analyzers
                    .OfType<GenericNameSyntax>()
                    .Where(x => x.Identifier.ValueText == "MapIdFor")
                    .Select(x => (x.TypeArgumentList.Arguments.FirstOrDefault() as IdentifierNameSyntax)
-                       .Identifier.ValueText)
+                       ?.Identifier.ValueText)
                     .ToList();
             }
 
@@ -100,9 +100,11 @@ namespace Eventfully.Core.Analyzers
             });
             foreach(var handlerPair in missingMappings)
             {
+                ImmutableDictionary<string, string> properties = new Dictionary<string, string>() { { "UnmappedMessage", handlerPair.Key } }.ToImmutableDictionary();
                 var diagn = Diagnostic.Create(Rule, handlerPair.Value.GetLocation(),
-                  $"Missing this.MapIdFor<{handlerPair.Key}> in constructor", 
-                  new Dictionary<string, string>() { { "UnmappedMessage", handlerPair.Key} }.ToImmutableDictionary());
+                        properties,
+                        $"Missing this.MapIdFor<{handlerPair.Key}> in constructor"
+               );
                 context.ReportDiagnostic(diagn);
             }
 

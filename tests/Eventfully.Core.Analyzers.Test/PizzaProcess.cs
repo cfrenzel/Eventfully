@@ -1,28 +1,27 @@
-﻿using Eventfully.Samples.ConsoleApp;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.Text;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 
-namespace Eventfully.Samples.AzureServiceBus.ConsoleApp
+namespace Eventfully.Core.Analyzers.Test
 {
-      
+     /// <summary>
+     /// This is included as a reminder to make changes in the Analyzer/code fixer when changes are made to the 
+     /// process manager related interfaces
+     /// </summary>     
     public class PizzaFulfillmentProcess : ProcessManagerMachine<PizzaFulfillmentStatus, Guid>,
        ITriggeredBy<PizzaOrderedEvent>,
        IMachineMessageHandler<PizzaPaidForEvent>,
        IMachineMessageHandler<PizzaPreparedEvent>,
        IMachineMessageHandler<PizzaDeliveredEvent>
     {  
-        private readonly ApplicationDbContext _db;
         private readonly ILogger<PizzaFulfillmentProcess> _log;
         private readonly IMessagingClient _messageClient;
          
-        public PizzaFulfillmentProcess(ApplicationDbContext db, IMessagingClient messageClient, ILogger<PizzaFulfillmentProcess> log)
+        public PizzaFulfillmentProcess(IMessagingClient messageClient, ILogger<PizzaFulfillmentProcess> log)
         { 
-            _db = db;
             _log = log;
             _messageClient = messageClient;
                      
@@ -95,20 +94,16 @@ namespace Eventfully.Samples.AzureServiceBus.ConsoleApp
 
         public class Persistence : SagaPersistence<PizzaFulfillmentStatus, Guid>
         {
-            private readonly ApplicationDbContext _db;
-            public Persistence(ApplicationDbContext db) => _db = db;
-            public override async Task LoadOrCreateState(ISaga<PizzaFulfillmentStatus, Guid> saga, Guid sagaId)
+            public Persistence() { }
+            public override  Task LoadOrCreateState(ISaga<PizzaFulfillmentStatus, Guid> saga, Guid sagaId)
             {
-                //var state = await _db.PizzaFulfillmentStatuses.SingleOrDefaultAsync(x => x.Id == sagaId);
                 PizzaFulfillmentStatus state = null;
                 state = state ?? new PizzaFulfillmentStatus(sagaId);
                 saga.SetState(state);
+                return Task.CompletedTask;
             }
             public override Task AddOrUpdateState(ISaga<PizzaFulfillmentStatus, Guid> saga)
             {
-                //if (_db.Entry(saga.State).State == EntityState.Detached)
-                //    _db.Add(saga.State);
-                //return _db.SaveChangesAsync();
                 return Task.CompletedTask;
             }
         }

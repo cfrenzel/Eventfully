@@ -12,6 +12,8 @@ namespace Eventfully.Core.Analyzers.Test
     public class UnitTest : CodeFixVerifier
     {
 
+
+
         //No diagnostics expected to show up
         [TestMethod]
         public void Should_be_no_diagnostics_by_default()
@@ -24,28 +26,38 @@ namespace Eventfully.Core.Analyzers.Test
         [TestMethod]
         public void Should_find_events_missing_mapping_for_saga()
         {
-            var test = 
-     @"public class PizzaFulfillmentProcess : ProcessManagerMachine<PizzaFulfillmentStatus, Guid>,
+            var test =
+@"using System;
+using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
+using System.Text;
+using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
+
+namespace Eventfully.Core.Analyzers.Test
+{
+      
+    public class PizzaFulfillmentProcess : ProcessManagerMachine<PizzaFulfillmentStatus, Guid>,
        ITriggeredBy<PizzaOrderedEvent>,
        IMachineMessageHandler<PizzaPaidForEvent>,
        IMachineMessageHandler<PizzaPreparedEvent>,
        IMachineMessageHandler<PizzaDeliveredEvent>
-       {
-        private readonly ApplicationDbContext _db;
+    {  
         private readonly ILogger<PizzaFulfillmentProcess> _log;
         private readonly IMessagingClient _messageClient;
-          
-        public PizzaFulfillmentProcess(ApplicationDbContext db, IMessagingClient messageClient, ILogger<PizzaFulfillmentProcess> log)
-        {
-            _db = db;
+         
+        public PizzaFulfillmentProcess(IMessagingClient messageClient, ILogger<PizzaFulfillmentProcess> log)
+        { 
             _log = log;
             _messageClient = messageClient;
-                  
+                     
             this.MapIdFor<PizzaPaidForEvent>((m, md) => m.OrderId);
             this.MapIdFor<PizzaPreparedEvent>((m, md) => m.OrderId);
             this.MapIdFor<PizzaDeliveredEvent>((m, md) => m.OrderId);
         }
-        }";
+    }
+}
+";
        
             var expected = new DiagnosticResult
             {
@@ -54,36 +66,47 @@ namespace Eventfully.Core.Analyzers.Test
                 Severity = DiagnosticSeverity.Warning,
                 Locations =
                     new[] {
-                            new DiagnosticResultLocation("Test0.cs", 2, 8)
+                            new DiagnosticResultLocation("Test0.cs", 12, 8)
                         }
             };
 
             VerifyCSharpDiagnostic(test, expected);
 
             var fixtest =
-     @"public class PizzaFulfillmentProcess : ProcessManagerMachine<PizzaFulfillmentStatus, Guid>,
+ @"using System;
+using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
+using System.Text;
+using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
+
+namespace Eventfully.Core.Analyzers.Test
+{
+      
+    public class PizzaFulfillmentProcess : ProcessManagerMachine<PizzaFulfillmentStatus, Guid>,
        ITriggeredBy<PizzaOrderedEvent>,
        IMachineMessageHandler<PizzaPaidForEvent>,
        IMachineMessageHandler<PizzaPreparedEvent>,
        IMachineMessageHandler<PizzaDeliveredEvent>
-       {
-        private readonly ApplicationDbContext _db;
+    {  
         private readonly ILogger<PizzaFulfillmentProcess> _log;
         private readonly IMessagingClient _messageClient;
-          
-        public PizzaFulfillmentProcess(ApplicationDbContext db, IMessagingClient messageClient, ILogger<PizzaFulfillmentProcess> log)
-        {
-            _db = db;
+         
+        public PizzaFulfillmentProcess(IMessagingClient messageClient, ILogger<PizzaFulfillmentProcess> log)
+        { 
             _log = log;
             _messageClient = messageClient;
-                  
+                     
             this.MapIdFor<PizzaPaidForEvent>((m, md) => m.OrderId);
             this.MapIdFor<PizzaPreparedEvent>((m, md) => m.OrderId);
             this.MapIdFor<PizzaDeliveredEvent>((m, md) => m.OrderId);
-            this.MapIdFor<PizzaOrderedEvent>((m, md) => m.);
+            this.MapIdFor<PizzaOrderedEvent>((m, md) => m.<ProcessId>);
         }
-        }";
-            VerifyCSharpFix(test, fixtest);
+    }
+}
+";
+
+            VerifyCSharpFix(test, fixtest, null, true);
         }
 
         //Diagnostic and CodeFix both triggered and checked for
@@ -102,4 +125,7 @@ namespace Eventfully.Core.Analyzers.Test
             return new EventfullyCoreAnalyzersAnalyzer();
         }
     }
+
+
+
 }
