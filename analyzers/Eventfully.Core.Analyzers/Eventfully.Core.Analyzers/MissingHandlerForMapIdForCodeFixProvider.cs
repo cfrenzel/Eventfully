@@ -61,10 +61,6 @@ namespace Eventfully.Core.Analyzers
         private string MachineClassName = "ProcessManagerMachine";
         private string SagaClassName = "Saga";
 
-            //"ITriggeredBy",
-            //"IMachineMessageHandler",
-            //"IMessageHandler",
-        
         private async Task<Document> AddMissingHandler(Document document, ClassDeclarationSyntax classExpr, string messageType, CancellationToken cancellationToken)
         {
 
@@ -80,20 +76,12 @@ namespace Eventfully.Core.Analyzers
                 return document;
 
             var oldRoot = await document.GetSyntaxRootAsync(cancellationToken);
-            var sibling = genericBases.LastOrDefault();
-            SyntaxTriviaList leadingWhiteSpace = sibling.GetLeadingTrivia().Where(t => t.Kind() == SyntaxKind.WhitespaceTrivia).ToSyntaxTriviaList();
+            var lastBaseClass = genericBases.LastOrDefault();
+            SyntaxTriviaList leadingWhiteSpace = lastBaseClass.GetLeadingTrivia().Where(t => t.Kind() == SyntaxKind.WhitespaceTrivia).ToSyntaxTriviaList();
             SyntaxTriviaList trailingWhiteSpace = new SyntaxTriviaList().Add(SyntaxFactory.EndOfLine(Environment.NewLine));
+            
             SimpleBaseTypeSyntax newInterface = null;
-            //if (classExpr.BaseList.Desce(w => w != sibling)
-            //    .Any(x => x.DescendantTokens()
-            //         .Any(token => token.TrailingTrivia
-            //            .Any(trivia => trivia.IsKind(SyntaxKind.EndOfLineTrivia))))
-            //    )
-            //{
-            //    //put it on a new line if thats how the previous looks
-                leadingWhiteSpace.Add(SyntaxFactory.EndOfLine(Environment.NewLine));
-            //}
-
+            
             if (genericBases.Any(x => x.Identifier.ValueText.Equals(MachineClassName)))
                 newInterface = SyntaxFactory.SimpleBaseType(SyntaxFactory.ParseTypeName($"IMachineMessageHandler<{messageType}>"))
                     .WithLeadingTrivia(leadingWhiteSpace).WithTrailingTrivia(trailingWhiteSpace);
@@ -105,9 +93,14 @@ namespace Eventfully.Core.Analyzers
             
            
             ClassDeclarationSyntax newClassExpr = classExpr.AddBaseListTypes(newInterface);
-            var newRoot = oldRoot.ReplaceNode(classExpr, newClassExpr);
 
-            
+            var lastComma = newClassExpr.BaseList.DescendantTokens().LastOrDefault(x => x.IsKind(SyntaxKind.CommaToken));
+            if (lastComma != null)
+            {
+                newClassExpr = newClassExpr.ReplaceToken(lastComma, lastComma.WithTrailingTrivia(trailingWhiteSpace));
+            }
+
+            var newRoot = oldRoot.ReplaceNode(classExpr, newClassExpr);
             return document.WithSyntaxRoot(newRoot);
         }
 
