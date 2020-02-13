@@ -23,9 +23,10 @@ namespace Eventfully.Core.Analyzers
         private static readonly LocalizableString Description = new LocalizableResourceString(nameof(Resources.AnalyzerDescription), Resources.ResourceManager, typeof(Resources));
         private const string Category = "Naming";
 
-        private static DiagnosticDescriptor Rule = new DiagnosticDescriptor(DiagnosticId, Title, MessageFormat, Category, DiagnosticSeverity.Warning, isEnabledByDefault: true, description: Description);
+        private static DiagnosticDescriptor MissingMapRule = new DiagnosticDescriptor(DiagnosticId, Title, MessageFormat, Category, DiagnosticSeverity.Warning, isEnabledByDefault: true, description: Description);
+        private static DiagnosticDescriptor MissingHandlerRule = new DiagnosticDescriptor("MissingHandlerForMapIdFor", "Missing Handler for Mapped Event", "{0}", Category, DiagnosticSeverity.Warning, isEnabledByDefault: true, description: Description);
 
-        public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics { get { return ImmutableArray.Create(Rule); } }
+        public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics { get { return ImmutableArray.Create(MissingMapRule, MissingHandlerRule); } }
 
         public override void Initialize(AnalysisContext context)
         {
@@ -41,10 +42,9 @@ namespace Eventfully.Core.Analyzers
             //        return;
 
             //    // register the analyzer on Method symbol
-            //    compilationContext.RegisterSymbolAction(AnalyzeSymbol, SymbolKind.NamedType);
+            //    context.RegisterSyntaxNodeAction(AnalyzeClassDeclaration, SyntaxKind.ClassDeclaration);
             //});
             context.RegisterSyntaxNodeAction(AnalyzeClassDeclaration, SyntaxKind.ClassDeclaration);
-            //context.RegisterSymbolAction(AnalyzeSymbol, SymbolKind.NamedType);
 
         }
 
@@ -67,7 +67,10 @@ namespace Eventfully.Core.Analyzers
             var genericBases = classExpr.BaseList.ChildNodes()
                 .Where(x => x is SimpleBaseTypeSyntax)
                 .Select(x => x.ChildNodes().FirstOrDefault(g => g is GenericNameSyntax))
+                .Where(x=> x != null)
                 .Cast<GenericNameSyntax>();
+            if (!genericBases.Any())
+                return;
 
             var sagaBases = genericBases.Where(x => _sagaClasses.Contains(x.Identifier.ValueText));
             if (sagaBases == null || sagaBases.Count() < 1)
@@ -82,33 +85,50 @@ namespace Eventfully.Core.Analyzers
                         value => value
                  );
 
-            List<string> mappedMessageTypes = null;
+            Dictionary<string, GenericNameSyntax> mappedMessageInterfaceMap = null;
             var constructorExpr = classExpr.ChildNodes().SingleOrDefault(x => x is ConstructorDeclarationSyntax);
             if(constructorExpr != null)
             {
-                mappedMessageTypes = constructorExpr.DescendantNodes()
+                mappedMessageInterfaceMap = constructorExpr.DescendantNodes()
                    .OfType<GenericNameSyntax>()
                    .Where(x => x.Identifier.ValueText == "MapIdFor")
-                   .Select(x => (x.TypeArgumentList.Arguments.FirstOrDefault() as IdentifierNameSyntax)
-                       ?.Identifier.ValueText)
-                    .ToList();
+                   .ToDictionary(x => (x.TypeArgumentList.Arguments.FirstOrDefault() as IdentifierNameSyntax)
+                       ?.Identifier.ValueText,
+                       y => y
+                    );
+                   //.Select(x => (x.TypeArgumentList.Arguments.FirstOrDefault() as IdentifierNameSyntax)
+                   //    ?.Identifier.ValueText)
+                    
             }
 
             var missingMappings = interfaceMessageTypeMap.Where(x =>
             {
-                return !mappedMessageTypes.Contains(x.Key);
+                return !mappedMessageInterfaceMap.ContainsKey(x.Key);
             });
-            foreach(var handlerPair in missingMappings)
+            foreach (var handlerPair in missingMappings)
             {
                 ImmutableDictionary<string, string> properties = new Dictionary<string, string>() { { "UnmappedMessage", handlerPair.Key } }.ToImmutableDictionary();
-                var diagn = Diagnostic.Create(Rule, handlerPair.Value.GetLocation(),
+                var diagn = Diagnostic.Create(MissingMapRule, handlerPair.Value.GetLocation(),
                         properties,
                         $"Missing this.MapIdFor<{handlerPair.Key}> in constructor"
                );
                 context.ReportDiagnostic(diagn);
             }
 
-         
+            var missingInterfaces = mappedMessageInterfaceMap.Where(x =>
+            {
+                return !interfaceMessageTypeMap.ContainsKey(x.Key);
+            });
+
+            foreach (var mappingPair in missingInterfaces)
+            {
+                ImmutableDictionary<string, string> properties = new Dictionary<string, string>() { { "UnhandledMessage", mappingPair.Key } }.ToImmutableDictionary();
+                var diagn = Diagnostic.Create(MissingHandlerRule, mappingPair.Value.GetLocation(),
+                        properties,
+                        $"Missing Handler<{mappingPair.Key}> interface"
+               );
+                context.ReportDiagnostic(diagn);
+            }
         }
 
     }
