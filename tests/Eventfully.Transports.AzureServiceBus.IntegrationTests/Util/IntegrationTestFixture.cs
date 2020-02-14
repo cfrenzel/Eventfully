@@ -18,7 +18,7 @@ using System.Collections.Concurrent;
 using System.Linq;
 using Xunit;
 
-[assembly: CollectionBehavior(DisableTestParallelization = true, MaxParallelThreads =1)]
+[assembly: CollectionBehavior(DisableTestParallelization = true, MaxParallelThreads = 1)]
 
 namespace Eventfully.Transports.AzureServieBus.IntegrationTests
 {
@@ -61,13 +61,6 @@ namespace Eventfully.Transports.AzureServieBus.IntegrationTests
                 builder.AddDebug();
             });
 
-
-            //services.AddDbContext<ApplicationDbContext>(options =>
-            //     options.UseSqlServer(
-            //        _config.GetConnectionString("ApplicationConnection")
-            //));
-
-            //services.AddMediatR(typeof(Program).GetTypeInfo().Assembly);
             _serviceProvider = services.BuildServiceProvider();
             Logging.LoggerFactory = _serviceProvider.GetRequiredService<ILoggerFactory>();
 
@@ -100,12 +93,6 @@ namespace Eventfully.Transports.AzureServieBus.IntegrationTests
                     IsReader = true,
                 }, _transport);
         }
-
-        public static string ConnectionString => _config.GetConnectionString("ApplicationConnection");
-
-        public static Task ResetCheckpoint() => _checkpoint.Reset(ConnectionString);
-
-        public static IServiceScope NewScope() => _serviceProvider.CreateScope();
 
         public static ITransport Transport => _transport;
         public static IEndpoint TopicEndpoint => _topicEndpoint;
@@ -142,13 +129,14 @@ namespace Eventfully.Transports.AzureServieBus.IntegrationTests
            
             var messageHandlerOptions = new MessageHandlerOptions(handler.HandleException)
             {
-                MaxConcurrentCalls = 10,
+                MaxConcurrentCalls = 3,
                 AutoComplete = true
             };
             queueClient.RegisterMessageHandler(handler.HandleMessage, messageHandlerOptions);
-            
-            return Task.Delay(3000)
-                .ContinueWith(x=>queueClient.CloseAsync());
+            return Task.Delay(3000).ContinueWith(x => 
+            { 
+                queueClient.CloseAsync(); }
+            );
         }
 
         public static async Task WriteToQueue(IEndpoint queueEndpoint, string messageTypeId, byte[] messageBytes, MessageMetaData meta = null)

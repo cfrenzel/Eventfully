@@ -8,22 +8,25 @@ namespace Eventfully
   
     public interface ISagaPersistence
     {
-        Task LoadState(ISaga saga, object sagaId);
-        Task SaveState(ISaga saga);
+        Task LoadOrCreateState(ISaga saga, object sagaId);
+        Task AddOrUpdateState(ISaga saga);
     }
 
     public interface ISagaPersistence<T, K> : ISagaPersistence
     {
-        Task LoadState(ISaga saga, K sagaId);
+        Task LoadOrCreateState(ISaga<T,K> saga, K sagaId);
+        Task AddOrUpdateState(ISaga<T,K> saga);
     }
 
-    public abstract class SagaPersistece<T, K> : ISagaPersistence<T, K>
+    public abstract class SagaPersistence<T, K> : ISagaPersistence<T, K>
     {
-        public abstract Task SaveState(ISaga saga);
+        public abstract Task AddOrUpdateState(ISaga<T,K> saga);
 
-        public abstract Task LoadState(ISaga saga, K sagaId);
+        public abstract Task LoadOrCreateState(ISaga<T,K> saga, K sagaId);
 
-        Task ISagaPersistence.LoadState(ISaga saga, object sagaId) => LoadState(saga, (K)sagaId);
+        Task ISagaPersistence.LoadOrCreateState(ISaga saga, object sagaId) => LoadOrCreateState((ISaga<T,K>) saga, (K) sagaId);
+        
+        Task ISagaPersistence.AddOrUpdateState(ISaga saga) => AddOrUpdateState((ISaga<T, K>)saga);
     }
 
 }

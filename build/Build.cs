@@ -37,9 +37,10 @@ class Build : NukeBuild
 
     AbsolutePath SourceDirectory => RootDirectory / "src";
     AbsolutePath TestsDirectory => RootDirectory / "tests";
+    AbsolutePath AnalyzerDirectory => RootDirectory / "analyzers";
     AbsolutePath ArtifactsDirectory => RootDirectory / "artifacts";
     AbsolutePath NugetDirectory => ArtifactsDirectory / "nuget";
-
+    
 
     Target Clean => _ => _
         .Before(Restore)
@@ -47,6 +48,7 @@ class Build : NukeBuild
         {
             SourceDirectory.GlobDirectories("**/bin", "**/obj").ForEach(DeleteDirectory);
             TestsDirectory.GlobDirectories("**/bin", "**/obj").ForEach(DeleteDirectory);
+            AnalyzerDirectory.GlobDirectories("**/bin", "**/obj").ForEach(DeleteDirectory);
             EnsureCleanDirectory(ArtifactsDirectory);
         });
 
@@ -87,6 +89,17 @@ class Build : NukeBuild
 
             if (Int32.TryParse(GitVersion.CommitsSinceVersionSource, out commitNum))
                 NuGetVersionCustom = commitNum > 0 ? NuGetVersionCustom + $"{commitNum}" : NuGetVersionCustom;
+
+            DotNetPack(s => s
+               .SetProject(Solution.GetProject("Eventfully.Core.Analyzers"))
+               .SetConfiguration(Configuration)
+               .EnableNoBuild()
+               .EnableNoRestore()
+               .SetVersion(NuGetVersionCustom)
+               .SetDescription("Lightweight Reliable Messaging Framework with Outbox")
+               .SetPackageTags("messaging servicebus cqrs distributed azureservicebus efcore ddd microservice")
+               .SetNoDependencies(true)
+               .SetOutputDirectory(ArtifactsDirectory / "nuget"));
 
             DotNetPack(s => s
                 .SetProject(Solution.GetProject("Eventfully.Core"))

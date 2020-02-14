@@ -42,7 +42,7 @@ namespace Eventfully.Handlers
 
 
         private class IntegrationMessageDispatcherHandler<T> : IntegrationMessageDispatcherHandler
-        where T : IIntegrationMessage
+            where T : IIntegrationMessage
         {
             public override Task Handle(IIntegrationMessage message, MessageContext context, IServiceFactory handlerFactory)
             {
@@ -51,29 +51,37 @@ namespace Eventfully.Handlers
 
             private static async Task HandleCore(T message, MessageContext context, IServiceFactory handlerFactory)
             {
-                using (var scope = handlerFactory.CreateScope())
+                using (var scope = handlerFactory.CreateScope())//for dependency injection
                 {
-                    var handler = scope.GetInstance<IMessageHandler<T>>();
-                    var outboxSession = scope.GetInstance<IOutboxSession>();
-
-                    context.OutboxSession = outboxSession;
-
+                    context.OutboxSession = scope.GetInstance<IOutboxSession>();
+              
+                    //is there a processManager/Saga for this message type
                     if (context.Props != null && context.Props.HasSagaHandler)
                     {
-                        var sagaProps = MessagingMap.GetSagaProps(context.Props.SagaType);
-                        if (sagaProps == null)
-                            throw new ApplicationException($"Couldn't find saga for Handler: {handler.GetType()}, SagaType: {context.Props.SagaType}");
-
-                        var saga = handler as ISaga;
+                        var sagaProps = MessagingMap.GetSagaProps(context.Props.SagaType) ??
+                            throw new ApplicationException($"Couldn't find saga for Handler: {context.Props.Type}, SagaType: {context.Props.SagaType}");
+                        
+                        var saga = (ISaga)scope.GetInstance(sagaProps.SagaType);
+                        
                         var persistence = scope.GetInstance(sagaProps.SagaPersistenceType) as ISagaPersistence;
-                        await persistence.LoadState(saga, saga.FindKey(message, context.MetaData));
-                        await handler.Handle(message, context);
-                        await persistence.SaveState(saga);
+                        await persistence.LoadOrCreateState(saga, saga.FindKey(message, context.MetaData));
+
+                        if (saga is IMessageHandler<T>)//includes ITriggeredBy<T>
+                            await ((IMessageHandler<T>)saga).Handle(message, context);
+                        else if(saga is ICustomMessageHandler<T>)
+                            await ((ICustomMessageHandler<T>)saga).Handle(message, context); 
+                        
+                        await persistence.AddOrUpdateState(saga);
                     }
-                    else
+                    else // basic handler class
+                    {
+                        var handler = scope.GetInstance<IMessageHandler<T>>();
                         await handler.Handle(message, context);
+                    }
                 }
             }
+
+
         }
 
 

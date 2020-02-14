@@ -177,13 +177,13 @@ namespace Eventfully.Semaphore.SqlServer
         {
             bool exists;
             using (var conn = _dbConnection.Get())
+            using (DbCommand command = conn.CreateCommand())
             {
                 var sql = @"SELECT [Name], [Owners], [RowVersion] 
                     FROM __Semaphores
                     WHERE [Name] = @SemaphoreName
                     ";
                 conn.Open();
-                DbCommand command = conn.CreateCommand();
                 command.CommandText = sql;
                 SqlParameter nameParam = new SqlParameter("@SemaphoreName", this.Name)
                 {
@@ -214,10 +214,10 @@ namespace Eventfully.Semaphore.SqlServer
         {
 
             using (var conn = _dbConnection.Get())
+            using (DbCommand command = conn.CreateCommand())
             {
                 var sql = @"INSERT INTO [dbo].[__Semaphores]([Name] ,[Owners]) VALUES  (@SemaphoreName, @Owners) ";
                 conn.Open();
-                DbCommand command = conn.CreateCommand();
                 command.CommandText = sql;
                 SqlParameter nameParam = new SqlParameter("@SemaphoreName", this.Name)
                 {
@@ -232,6 +232,7 @@ namespace Eventfully.Semaphore.SqlServer
                     Direction = ParameterDirection.Input,
                 };
                 command.Parameters.Add(ownersParam);
+           
                 int rows = await command.ExecuteNonQueryAsync();
                 if (rows == 1)
                     return await GetSemaphoreInfo();
@@ -249,6 +250,7 @@ namespace Eventfully.Semaphore.SqlServer
         private async Task<bool> _updateSemaphoreInfo(byte[] origRowVersion, SemaphoreOwners owners)
         {
             using (var conn = _dbConnection.Get())
+            using (DbCommand command = conn.CreateCommand())
             {
                 var sql = @"
                     UPDATE __Semaphores SET [Owners] = @Owners 
@@ -257,7 +259,6 @@ namespace Eventfully.Semaphore.SqlServer
                     ";
 
                 conn.Open();
-                DbCommand command = conn.CreateCommand();
                 command.CommandText = sql;
                 SqlParameter nameParam = new SqlParameter("@SemaphoreName", this.Name)
                 {

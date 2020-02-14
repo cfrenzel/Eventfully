@@ -28,16 +28,14 @@ namespace Eventfully.Transports.AzureServieBus.IntegrationTests
         {
             this._fixture = fixture;
             this._log = log;
-
-            IntegrationTestFixture.ClearQueue(IntegrationTestFixture.QueueEndpoint).GetAwaiter().GetResult();
         }
 
-        public class Fixture
-        { 
-
+        public override async Task InitializeAsync()
+        {
+            await base.InitializeAsync();
+            await IntegrationTestFixture.ClearQueue(IntegrationTestFixture.QueueEndpoint);
         }
-
-       
+        public class Fixture{}       
      
         [Fact]
         public async Task Should_handle_from_service_bus_queue()

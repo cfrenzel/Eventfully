@@ -35,6 +35,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\..\analyzers\Eventfully.Core.Analyzers\Eventfully.Core.Analyzers\Eventfully.Core.Analyzers.csproj">
+      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+      <OutputItemType>Analyzer</OutputItemType>
+    </ProjectReference>
     <ProjectReference Include="..\..\..\src\Eventfully.Core\Eventfully.Core.csproj" />
     <ProjectReference Include="..\..\..\src\Eventfully.EFCoreOutbox\Eventfully.EFCoreOutbox.csproj" />
     <ProjectReference Include="..\..\..\src\Eventfully.MicrosoftDependencyInjection\Eventfully.Extensions.Microsoft.DependencyInjection.csproj" />
