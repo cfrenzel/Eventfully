@@ -137,7 +137,7 @@ namespace Eventfully.Core.Analyzers.Test
 }
 ";
 
-            VerifyCSharpFix(test, fixtest, null, true);
+            VerifyCSharpFix(test, fixtest, new MissingMapIdForCodeFixProvider(), null, true);
         }
 
 
@@ -226,14 +226,18 @@ namespace Eventfully.Core.Analyzers.Test
 }
 ";
 
-            VerifyCSharpFix(test, fixtest, null, true);
+            VerifyCSharpFix(test, fixtest, new MissingHandlerForMapIdForCodeFixProvider(), null, true);
         }
 
-
-        protected override CodeFixProvider GetCSharpCodeFixProvider()
-        {
-            return new MissingHandlerForMapIdForCodeFixProvider();
-        }
+        //protected override CodeFixProvider GetCSharpCodeFixProvider1()
+        //{
+        //    return new MissingMapIdForCodeFixProvider();
+        //}
+        //protected override CodeFixProvider GetCSharpCodeFixProvider2()
+        //{
+        //    return new MissingHandlerForMapIdForCodeFixProvider();
+        //}
+      
 
         protected override DiagnosticAnalyzer GetCSharpDiagnosticAnalyzer()
         {

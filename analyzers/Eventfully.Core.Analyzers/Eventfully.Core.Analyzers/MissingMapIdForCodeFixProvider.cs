@@ -43,9 +43,9 @@ namespace Eventfully.Core.Analyzers
             // Find the type declaration identified by the diagnostic.
             var declaration = root.FindToken(diagnosticSpan.Start).Parent.AncestorsAndSelf().OfType<ClassDeclarationSyntax>().First();
             string unmappedMessageType = null;
-            //if (!diagnostic.Properties.TryGetValue("UnmappedMessage", out unmappedMessageType))
-            //return;  
-            diagnostic.Properties.TryGetValue("UnmappedMessage", out unmappedMessageType);
+            if (!diagnostic.Properties.TryGetValue("UnmappedMessage", out unmappedMessageType))
+                return;  
+            //diagnostic.Properties.TryGetValue("UnmappedMessage", out unmappedMessageType);
 
             context.RegisterCodeFix(
         CodeAction.Create(

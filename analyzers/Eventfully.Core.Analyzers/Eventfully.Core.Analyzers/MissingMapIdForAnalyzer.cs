@@ -15,6 +15,7 @@ namespace Eventfully.Core.Analyzers
     public class MissingMapIdForAnalyzer : DiagnosticAnalyzer
     {
         public const string DiagnosticId = "MissingMapIdForAnalyzer";
+        public const string DiagnosticId2 = "MissingHandlerForMapIdFor";
 
         // You can change these strings in the Resources.resx file. If you do not want your analyzer to be localize-able, you can use regular strings for Title and MessageFormat.
         // See https://github.com/dotnet/roslyn/blob/master/docs/analyzers/Localizing%20Analyzers.md for more on localization
@@ -24,7 +25,7 @@ namespace Eventfully.Core.Analyzers
         private const string Category = "Naming";
 
         private static DiagnosticDescriptor MissingMapRule = new DiagnosticDescriptor(DiagnosticId, Title, MessageFormat, Category, DiagnosticSeverity.Warning, isEnabledByDefault: true, description: Description);
-        private static DiagnosticDescriptor MissingHandlerRule = new DiagnosticDescriptor("MissingHandlerForMapIdFor", "Missing Handler for Mapped Event", "{0}", Category, DiagnosticSeverity.Warning, isEnabledByDefault: true, description: Description);
+        private static DiagnosticDescriptor MissingHandlerRule = new DiagnosticDescriptor(DiagnosticId2, "Missing Handler for Mapped Event", "{0}", Category, DiagnosticSeverity.Warning, isEnabledByDefault: true, description: Description);
 
         public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics { get { return ImmutableArray.Create(MissingMapRule, MissingHandlerRule); } }
 

@@ -23,7 +23,7 @@ namespace Eventfully.Core.Analyzers
 
         public sealed override ImmutableArray<string> FixableDiagnosticIds
         {
-            get { return ImmutableArray.Create(MissingMapIdForAnalyzer.DiagnosticId); }
+            get { return ImmutableArray.Create(MissingMapIdForAnalyzer.DiagnosticId2); }
         }
 
         public sealed override FixAllProvider GetFixAllProvider()
@@ -43,9 +43,9 @@ namespace Eventfully.Core.Analyzers
             // Find the type declaration identified by the diagnostic.
             var declaration = root.FindToken(diagnosticSpan.Start).Parent.AncestorsAndSelf().OfType<ClassDeclarationSyntax>().First();
             string unmappedMessageType = null;
-            //if (!diagnostic.Properties.TryGetValue("UnmappedMessage", out unmappedMessageType))
-            //return;  
-            diagnostic.Properties.TryGetValue("UnhandledMessage", out unmappedMessageType);
+            if (!diagnostic.Properties.TryGetValue("UnhandledMessage", out unmappedMessageType))
+                return;  
+            //diagnostic.Properties.TryGetValue("UnhandledMessage", out unmappedMessageType);
 
             context.RegisterCodeFix(
              CodeAction.Create(
