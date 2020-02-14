@@ -37,9 +37,10 @@ class Build : NukeBuild
 
     AbsolutePath SourceDirectory => RootDirectory / "src";
     AbsolutePath TestsDirectory => RootDirectory / "tests";
+    AbsolutePath AnalyzerDirectory => RootDirectory / "analyzers";
     AbsolutePath ArtifactsDirectory => RootDirectory / "artifacts";
     AbsolutePath NugetDirectory => ArtifactsDirectory / "nuget";
-
+    
 
     Target Clean => _ => _
         .Before(Restore)
@@ -47,6 +48,7 @@ class Build : NukeBuild
         {
             SourceDirectory.GlobDirectories("**/bin", "**/obj").ForEach(DeleteDirectory);
             TestsDirectory.GlobDirectories("**/bin", "**/obj").ForEach(DeleteDirectory);
+            AnalyzerDirectory.GlobDirectories("**/bin", "**/obj").ForEach(DeleteDirectory);
             EnsureCleanDirectory(ArtifactsDirectory);
         });
 
