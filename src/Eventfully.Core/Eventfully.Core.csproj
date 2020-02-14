@@ -12,10 +12,9 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference PrivateAssets="All"  Pack="false" Include="..\..\analyzers\Eventfully.Core.Analyzers\Eventfully.Core.Analyzers\Eventfully.Core.Analyzers.csproj" />
-    <None Include="$(OutputPath)\Eventfully.Core.Analyzers.dll" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" />
-    <None Include="$(OutputPath)\tools\*.ps1"  Pack="true" PackagePath="tools" />
+    <ProjectReference Include="..\..\analyzers\Eventfully.Core.Analyzers\Eventfully.Core.Analyzers\Eventfully.Core.Analyzers.csproj" />
   </ItemGroup>
 
+  
  
 </Project>
