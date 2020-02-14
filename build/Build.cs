@@ -91,6 +91,17 @@ class Build : NukeBuild
                 NuGetVersionCustom = commitNum > 0 ? NuGetVersionCustom + $"{commitNum}" : NuGetVersionCustom;
 
             DotNetPack(s => s
+               .SetProject(Solution.GetProject("Eventfully.Core.Analyzers"))
+               .SetConfiguration(Configuration)
+               .EnableNoBuild()
+               .EnableNoRestore()
+               .SetVersion(NuGetVersionCustom)
+               .SetDescription("Lightweight Reliable Messaging Framework with Outbox")
+               .SetPackageTags("messaging servicebus cqrs distributed azureservicebus efcore ddd microservice")
+               .SetNoDependencies(true)
+               .SetOutputDirectory(ArtifactsDirectory / "nuget"));
+
+            DotNetPack(s => s
                 .SetProject(Solution.GetProject("Eventfully.Core"))
                 .SetConfiguration(Configuration)
                 .EnableNoBuild()

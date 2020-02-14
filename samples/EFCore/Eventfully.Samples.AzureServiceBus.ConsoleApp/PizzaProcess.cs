@@ -15,7 +15,7 @@ namespace Eventfully.Core.Analyzers.Test
        ITriggeredBy<PizzaOrderedEvent>,
        IMachineMessageHandler<PizzaPaidForEvent>,
        IMachineMessageHandler<PizzaPreparedEvent>,
-       IMachineMessageHandler<PizzaDeliveredEvent> 
+       IMachineMessageHandler<PizzaDeliveredEvent>
     {  
         private readonly ILogger<PizzaFulfillmentProcess> _log;
         private readonly IMessagingClient _messageClient;
