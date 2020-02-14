@@ -95,17 +95,9 @@ namespace Eventfully.Outboxing
                 await _outboxConsumerSemaphore.TryRelease(this._uniqueIdentifier);
         }
 
-        ~OutboxManager()  // finalizer
-        {
-            if (_outboxConsumerSemaphore != null)
-                _outboxConsumerSemaphore.TryRelease(this._uniqueIdentifier).GetAwaiter().GetResult();
-        }
-
+       
         public void Dispose()
         {
-            if (_outboxConsumerSemaphore != null)
-                _outboxConsumerSemaphore.TryRelease(this._uniqueIdentifier).GetAwaiter().GetResult();
-
             _dispatchTimer?.Dispose();
             _cleanUpTimer?.Dispose();
             _resetTimer?.Dispose();

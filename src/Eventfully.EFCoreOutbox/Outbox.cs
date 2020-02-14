@@ -11,6 +11,7 @@ using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
 using Eventfully.Outboxing;
 using System.Threading;
+using System.Threading.Tasks.Dataflow;
 
 namespace Eventfully.EFCoreOutbox
 {
@@ -43,7 +44,8 @@ namespace Eventfully.EFCoreOutbox
     {
         private static ILogger<Outbox<T>> _log = Logging.CreateLogger<Outbox<T>>();
 
-        private readonly BlockingCollection<OutboxMessage> _transientDispatchQueue = new BlockingCollection<OutboxMessage>();
+        //private readonly BlockingCollection<OutboxMessage> _transientDispatchQueue = new BlockingCollection<OutboxMessage>();
+        private readonly BufferBlock<OutboxMessage> _transientDispatchQueue = new BufferBlock<OutboxMessage>(new DataflowBlockOptions() { });
         private readonly SqlConnectionFactory _dbConnection;
         private readonly IRetryIntervalStrategy _retryStrategy;
 
@@ -81,7 +83,10 @@ namespace Eventfully.EFCoreOutbox
         {
             try
             {
+                IEnumerable<OutboxMessage> outboxMessages = null;
+
                 using (var conn = _dbConnection.Get())
+                using (DbCommand command = conn.CreateCommand())
                 {
                     var sql = @"
                     WITH NextBatch as (
@@ -100,7 +105,6 @@ namespace Eventfully.EFCoreOutbox
                     ";
 
                     conn.Open();
-                    DbCommand command = conn.CreateCommand();
                     command.CommandText = sql;
                     SqlParameter batchParam = new SqlParameter("@BatchSize", this.BatchSize)
                     {
@@ -116,22 +120,23 @@ namespace Eventfully.EFCoreOutbox
                     command.Parameters.Add(currDateParam);
                     using (var reader = await command.ExecuteReaderAsync())
                     {
-                        var outboxMessages = HydrateOutboxMessages(reader);
-                        Parallel.ForEach(outboxMessages, new ParallelOptions { MaxDegreeOfParallelism = this.MaxConcurrency },
-                            async outboxMessage =>
-                            {
-                                //await _relay(outboxMessage, relayCallback);
-                                await _relay(outboxMessage, dispatcher);
-
-                            });
-                        return new OutboxRelayResult(outboxMessages != null ? outboxMessages.Count() : 0, this.BatchSize);
+                        outboxMessages = HydrateOutboxMessages(reader);
                     }
                 }//using
-            }
-            catch (DbException exDb)
-            {
-                _log.LogError(exDb, "Database Exception reading outbox");
-                throw;
+
+                var block = new ActionBlock<OutboxMessage>(outboxMessage => _relay(outboxMessage, dispatcher),
+                    new ExecutionDataflowBlockOptions { MaxDegreeOfParallelism = this.MaxConcurrency }
+                );
+
+                foreach (var outboxMessage in outboxMessages)
+                    block.Post(outboxMessage);
+                block.Complete();
+                await block.Completion;
+                
+                //foreach (var outboxMessage in outboxMessages)
+                //    await _relay(outboxMessage, dispatcher);
+
+                return new OutboxRelayResult(outboxMessages != null ? outboxMessages.Count() : 0, this.BatchSize);
             }
             catch (Exception ex)
             {
@@ -177,6 +182,7 @@ namespace Eventfully.EFCoreOutbox
         public async Task CleanUp(TimeSpan cleanupAge)
         {
             using (var conn = _dbConnection.Get())
+            using (DbCommand command = conn.CreateCommand())
             {
                 try
                 {
@@ -186,7 +192,6 @@ namespace Eventfully.EFCoreOutbox
                     ";
 
                     conn.Open();
-                    DbCommand command = conn.CreateCommand();
                     command.CommandText = sql;
                     SqlParameter parameter = new SqlParameter("@AgeLimitDate", DateTime.UtcNow.Subtract(cleanupAge))
                     {
@@ -195,11 +200,6 @@ namespace Eventfully.EFCoreOutbox
                     };
                     command.Parameters.Add(parameter);
                     int rows = await command.ExecuteNonQueryAsync();
-                }
-                catch (DbException exDb)
-                {
-                    _log.LogError(exDb, "Database Exception cleaning up outbox");
-                    throw;
                 }
                 catch (Exception ex)
                 {
@@ -212,6 +212,7 @@ namespace Eventfully.EFCoreOutbox
         public async Task Reset(TimeSpan resetAge)
         {
             using (var conn = _dbConnection.Get())
+            using (DbCommand command = conn.CreateCommand())
             {
                 try
                 {
@@ -221,7 +222,6 @@ namespace Eventfully.EFCoreOutbox
                     ";
 
                     conn.Open();
-                    DbCommand command = conn.CreateCommand();
                     command.CommandText = sql;
                     SqlParameter parameter = new SqlParameter("@ResetLimitDate", DateTime.UtcNow.Subtract(resetAge))
                     {
@@ -250,9 +250,9 @@ namespace Eventfully.EFCoreOutbox
             try
             {
                 using (var conn = _dbConnection.Get())
+                using (IDbCommand command = conn.CreateCommand())
                 {
                     conn.Open();
-                    IDbCommand command = conn.CreateCommand();
                     command.CommandText = "update dbo.OutboxMessages SET [Status] = 2  where Id = @Id";
                     SqlParameter parameter = new SqlParameter("@Id", outboxMessage.Id)
                     {
@@ -262,11 +262,6 @@ namespace Eventfully.EFCoreOutbox
                     command.Parameters.Add(parameter);
                     int rows = command.ExecuteNonQuery();
                 }
-            }
-            catch (DbException exDb)
-            {
-                _log.LogError(exDb, "Database Exception marking outbox message complete Message Id: {id} Type: {type} Tries: {retryCount}", outboxMessage.Id, outboxMessage.Type, outboxMessage.TryCount);
-                throw;
             }
             catch (Exception ex)
             {
@@ -281,9 +276,9 @@ namespace Eventfully.EFCoreOutbox
             try
             {
                 using (var conn = _dbConnection.Get())
+                using (IDbCommand command = conn.CreateCommand())
                 {
                     conn.Open();
-                    IDbCommand command = conn.CreateCommand();
                     command.CommandText = @"
                         update dbo.OutboxMessages SET [Status] = @Status, PriorityDateUtc = @PriorityDate
                         where Id = @Id and [Status] = 1";
@@ -319,11 +314,6 @@ namespace Eventfully.EFCoreOutbox
 
                     int rows = command.ExecuteNonQuery();
                 }
-            }
-            catch (DbException exDb)
-            {
-                _log.LogError(exDb, "Database Exception marking outbox message. failure Message Id: {id} Type: {type} Tries: {retryCount}", outboxMessage.Id, outboxMessage.Type, outboxMessage.TryCount);
-                throw;
             }
             catch (Exception ex)
             {
@@ -381,7 +371,8 @@ namespace Eventfully.EFCoreOutbox
         public void DispatchTransientMessages(IEnumerable<OutboxMessage> outboxMessages)
         {
             foreach(var message in outboxMessages)
-                _transientDispatchQueue.Add(message);
+                _transientDispatchQueue.Post(message);
+            //_transientDispatchQueue.Add(message);
         }
 
         private CancellationTokenSource _outboxTokenSource;
@@ -397,17 +388,34 @@ namespace Eventfully.EFCoreOutbox
 
             if (!this.DisableTransientDispatch)
             {
-                _outboxTransientTask = Task.Run(() =>
+                _outboxTransientTask = Task.Run(async () =>
                 {
-                   Parallel.ForEach(_transientDispatchQueue.GetConsumingPartitioner(),
-                       new ParallelOptions { CancellationToken = ct, MaxDegreeOfParallelism = this.MaxConcurrency },
-                       async outboxMessage =>
-                       {
-                           if (outboxMessage.SkipTransientDispatch)
-                               return;
-                           await _relay(outboxMessage, dispatcher, true);// MessagingService.Instance.DispatchTransientCore);
-                       });
+                    while (!ct.IsCancellationRequested && await _transientDispatchQueue.OutputAvailableAsync(ct))
+                    {
+                        var outboxMessage = await _transientDispatchQueue.ReceiveAsync();
+                        await _relay(outboxMessage, dispatcher, true);
+                    }
                 }, ct);
+                //_outboxTransientTask = Task.Run( async () =>
+                //{
+                //    while (!_transientDispatchQueue.IsCompleted && !ct.IsCancellationRequested)
+                //    {
+                //        var block = new ActionBlock<OutboxMessage>(outboxMessage => _relay(outboxMessage, dispatcher),
+                //            new ExecutionDataflowBlockOptions { MaxDegreeOfParallelism = this.MaxConcurrency }
+                //        );
+
+                //        foreach (var outboxMessage in outboxMessages)
+                //            block.Post(outboxMessage);
+                //        block.Complete();
+                //        await block.Completion;
+
+
+                //        //var outboxMessage = _transientDispatchQueue.Take(ct);
+                //        //if (outboxMessage.SkipTransientDispatch)
+                //        //    return;
+                //        //await _relay(outboxMessage, dispatcher, true);
+                //    }
+                //}, ct);
             }
 
             return Task.CompletedTask;
@@ -417,50 +425,9 @@ namespace Eventfully.EFCoreOutbox
         {
             if (_outboxTokenSource != null && !_outboxTokenSource.IsCancellationRequested)
                 _outboxTokenSource.Cancel();
-
-            return _outboxTransientTask;
-        }
-    }
-
-
-    /// <summary>
-    /// Helper for using BlockingCollection with Parallel.Foreach
-    /// https://devblogs.microsoft.com/pfxteam/parallelextensionsextras-tour-4-blockingcollectionextensions/
-    /// </summary>
-    /// <typeparam name="T"></typeparam>
-    /// <param name="collection"></param>
-    /// <returns></returns>
-    public static class Extensions
-    {
-        public static Partitioner<T> GetConsumingPartitioner<T>(this BlockingCollection<T> collection)
-        {
-            return new BlockingCollectionPartitioner<T>(collection);
-        }
-
-        private class BlockingCollectionPartitioner<T> : Partitioner<T>
-        {
-            private BlockingCollection<T> _collection;
-            public override bool SupportsDynamicPartitions => true;
-            internal BlockingCollectionPartitioner(BlockingCollection<T> collection)
-            {
-                if (collection == null)
-                    throw new ArgumentNullException("collection");
-                _collection = collection;
-            }
+            _transientDispatchQueue.Complete();
            
-            public override IList<IEnumerator<T>> GetPartitions(int partitionCount)
-            {
-                if (partitionCount < 1)
-                    throw new ArgumentOutOfRangeException("partitionCount");
-
-                var dynamicPartitioner = GetDynamicPartitions();
-                return Enumerable.Range(0, partitionCount).Select(_ => dynamicPartitioner.GetEnumerator()).ToArray();
-            }
-
-            public override IEnumerable<T> GetDynamicPartitions()
-            {
-                return _collection.GetConsumingEnumerable();
-            }
+            return Task.WhenAll(_outboxTransientTask, _transientDispatchQueue.Completion);
         }
     }
 }
