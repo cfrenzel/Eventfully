@@ -118,7 +118,7 @@ namespace Eventfully.Core.Analyzers.Test
         public string SpecialInstructions { get; set; }
         public DateTime OrderedAt { get; set; }
     }
-
+     
     public class PizzaPaidForEvent : IntegrationEvent
     {
         public Guid OrderId { get; set; }
