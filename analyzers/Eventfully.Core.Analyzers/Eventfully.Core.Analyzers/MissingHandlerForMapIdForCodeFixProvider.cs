@@ -63,7 +63,6 @@ namespace Eventfully.Core.Analyzers
 
         private async Task<Document> AddMissingHandler(Document document, ClassDeclarationSyntax classExpr, string messageType, CancellationToken cancellationToken)
         {
-
             if (classExpr.BaseList == null)
                 return document;
             var genericBases = classExpr.BaseList.ChildNodes()
@@ -75,31 +74,23 @@ namespace Eventfully.Core.Analyzers
             if (!genericBases.Any())
                 return document;
 
-            var oldRoot = await document.GetSyntaxRootAsync(cancellationToken);
-            var lastBaseClass = genericBases.LastOrDefault();
-            SyntaxTriviaList leadingWhiteSpace = lastBaseClass.GetLeadingTrivia().Where(t => t.Kind() == SyntaxKind.WhitespaceTrivia).ToSyntaxTriviaList();
             SyntaxTriviaList trailingWhiteSpace = new SyntaxTriviaList().Add(SyntaxFactory.EndOfLine(Environment.NewLine));
-            
             SimpleBaseTypeSyntax newInterface = null;
             
             if (genericBases.Any(x => x.Identifier.ValueText.Equals(MachineClassName)))
-                newInterface = SyntaxFactory.SimpleBaseType(SyntaxFactory.ParseTypeName($"IMachineMessageHandler<{messageType}>"))
-                    .WithLeadingTrivia(leadingWhiteSpace).WithTrailingTrivia(trailingWhiteSpace);
+                newInterface = SyntaxFactory.SimpleBaseType(SyntaxFactory.ParseTypeName($"IMachineMessageHandler<{messageType}>")).WithTrailingTrivia(trailingWhiteSpace);
             else if (genericBases.Any(x => x.Identifier.ValueText.Equals(SagaClassName)))
-                newInterface = SyntaxFactory.SimpleBaseType(SyntaxFactory.ParseTypeName($"IMessageHandler<{messageType}>"))
-                    .WithLeadingTrivia(leadingWhiteSpace).WithTrailingTrivia(trailingWhiteSpace); 
+                newInterface = SyntaxFactory.SimpleBaseType(SyntaxFactory.ParseTypeName($"IMessageHandler<{messageType}>")).WithTrailingTrivia(trailingWhiteSpace); 
             else
                 return document;
-            
            
             ClassDeclarationSyntax newClassExpr = classExpr.AddBaseListTypes(newInterface);
 
             var lastComma = newClassExpr.BaseList.DescendantTokens().LastOrDefault(x => x.IsKind(SyntaxKind.CommaToken));
             if (lastComma != null)
-            {
                 newClassExpr = newClassExpr.ReplaceToken(lastComma, lastComma.WithTrailingTrivia(trailingWhiteSpace));
-            }
-
+         
+            var oldRoot = await document.GetSyntaxRootAsync(cancellationToken);
             var newRoot = oldRoot.ReplaceNode(classExpr, newClassExpr);
             return document.WithSyntaxRoot(newRoot);
         }
