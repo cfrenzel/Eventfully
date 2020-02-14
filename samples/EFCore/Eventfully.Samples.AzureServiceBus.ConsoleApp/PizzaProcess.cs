@@ -12,11 +12,11 @@ namespace Eventfully.Core.Analyzers.Test
      /// process manager related interfaces
      /// </summary>         
     public class PizzaFulfillmentProcess : ProcessManagerMachine<PizzaFulfillmentStatus, Guid>,
-       ITriggeredBy<PizzaOrderedEvent>,
-       IMachineMessageHandler<PizzaPaidForEvent>,
-       IMachineMessageHandler<PizzaPreparedEvent>,
-       IMachineMessageHandler<PizzaDeliveredEvent>
-    {  
+           ITriggeredBy<PizzaOrderedEvent>,
+           IMachineMessageHandler<PizzaPaidForEvent>,
+           IMachineMessageHandler<PizzaDeliveredEvent>,
+           IMachineMessageHandler<PizzaPreparedEvent>
+    {
         private readonly ILogger<PizzaFulfillmentProcess> _log;
         private readonly IMessagingClient _messageClient;
           
