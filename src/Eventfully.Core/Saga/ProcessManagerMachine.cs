@@ -53,7 +53,7 @@ namespace Eventfully
         {
             var stateName = MapMethodNameToState(newState.Method.Name);
             if (String.IsNullOrEmpty(stateName))
-                throw new InvalidOperationException("Handler tasks must be named method calls");
+                throw new InvalidOperationException($"Unable to determine state name for method: {newState.Method.Name}");
 
             
             this._currentHandlers = new HandlerState(stateName);

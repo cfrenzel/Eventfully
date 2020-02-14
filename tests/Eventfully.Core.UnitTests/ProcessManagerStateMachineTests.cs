@@ -110,129 +110,29 @@ namespace Eventfully.Core.UnitTests
             }
         }
 
-        /// <summary>
-        /// Same methods differe concrete type -Int64 key
-        /// Using to test that the MethodInfo cache doesn't collide between generic types
-        /// </summary>
-        public class PizzaFulfillmentProcessInt64 : ProcessManagerMachine<PizzaFulfillmentState, Int64>,
-          IMachineMessageHandler<PizzaPaidForEvent>,
-          IMachineMessageHandler<PizzaPreparedEvent>,
-          IMachineMessageHandler<PizzaDeliveredEvent>
-        {
-            public PizzaFulfillmentProcessInt64() { }
-
-            public void Ordered()
-            {
-                Handle<PizzaPaidForEvent>((message, context) =>
-                {
-                    if (State.PaidAtUtc.HasValue)
-                        return Task.CompletedTask;
-                    State.PaidAtUtc = message.PaidAt;
-                    if (State.CanBeShipped)
-                        Become(Ready);
-                    return Task.CompletedTask;
-                });
-
-                Handle<PizzaPreparedEvent>((message, context) =>
-                {
-                    if (State.PreparedAtUtc.HasValue)
-                        return Task.CompletedTask;
-                    State.PreparedAtUtc = message.PreparedAt;
-                    if (State.CanBeShipped)
-                        Become(Ready);
-                    return Task.CompletedTask;
-                });
-            }
-
-            public void Ready()
-            {
-                Handle<PizzaShippedEvent>((message, context) =>
-                {
-                    if (State.ShippedAtUtc.HasValue)
-                        return Task.CompletedTask;
-                    State.ShippedAtUtc = message.ShippedAt;
-                    Become(OutForDelivery);
-                    return Task.CompletedTask;
-                });
-            }
-
-            public void OutForDelivery()
-            {
-                Handle<PizzaDeliveredEvent>((message, context) =>
-                {
-                    if (State.DeliveredAtUtc.HasValue)
-                        return Task.CompletedTask;
-                    State.DeliveredAtUtc = message.DeliveredAt;
-                    Become(Complete);
-                    return Task.CompletedTask;
-                });
-            }
-
-            public void Complete()
-            {
-                State.CompletedAtUtc = DateTime.UtcNow;
-            }
-        }
-
-        public class PizzaFulfillmentProcessCustomNaming : ProcessManagerMachine<PizzaFulfillmentState, Guid>,
+        public class DuplicateHandlerProcess : ProcessManagerMachine<PizzaFulfillmentState, Guid>,
          IMachineMessageHandler<PizzaPaidForEvent>,
-         IMachineMessageHandler<PizzaPreparedEvent>,
-         IMachineMessageHandler<PizzaDeliveredEvent>
+         IMachineMessageHandler<PizzaPreparedEvent>
         {
-            public PizzaFulfillmentProcessCustomNaming() { }
-
-            public void CustomOrdered()
+            public DuplicateHandlerProcess() { }
+            public void Initial()
             {
-                Handle<PizzaPaidForEvent>((message, context) =>
-                {
-                    if (State.PaidAtUtc.HasValue)
-                        return Task.CompletedTask;
-                    State.PaidAtUtc = message.PaidAt;
-                    if (State.CanBeShipped)
-                        Become(CustomReady);
-                    return Task.CompletedTask;
-                });
-
                 Handle<PizzaPreparedEvent>((message, context) =>
                 {
-                    if (State.PreparedAtUtc.HasValue)
-                        return Task.CompletedTask;
-                    State.PreparedAtUtc = message.PreparedAt;
-                    if (State.CanBeShipped)
-                        Become(CustomReady);
+                    Become(Duplicate);
                     return Task.CompletedTask;
                 });
             }
-            public void CustomReady()
+            public void Duplicate()
             {
-                Handle<PizzaShippedEvent>((message, context) =>
-                {
-                    if (State.ShippedAtUtc.HasValue)
-                        return Task.CompletedTask;
-                    State.ShippedAtUtc = message.ShippedAt;
-                    Become(CustomComplete);
-                    return Task.CompletedTask;
-                });
-            }
-
-            public void CustomComplete()
-            {
-                State.CompletedAtUtc = DateTime.UtcNow;
-            }
-            protected override string MapMethodNameToState(string methodName)
-            {
-                return methodName.Remove(0, 6);//remove custom for state name;
-            }
-
-            protected override string MapStateToMethodName(string state)
-            {
-                return $"Custom{state}";
+                Handle<PizzaPreparedEvent>((message, context) => { return Task.CompletedTask; });
+                Handle<PizzaPreparedEvent>((message, context) => { return Task.CompletedTask; });
+                Handle<PizzaPaidForEvent>((message, context) => { return Task.CompletedTask; });
             }
         }
-            
         public class PizzaTriggeredFulfillmentProcess : ProcessManagerMachine<PizzaFulfillmentState, Guid>,
-            ITriggeredBy<PizzaOrderedEvent>,
-            IMachineMessageHandler<PizzaDeliveredEvent>
+         ITriggeredBy<PizzaOrderedEvent>,
+         IMachineMessageHandler<PizzaDeliveredEvent>
         {
             public PizzaTriggeredFulfillmentProcess() { }
 
@@ -261,27 +161,6 @@ namespace Eventfully.Core.UnitTests
 
         }
 
-
-        public class DuplicateHandlerProcess : ProcessManagerMachine<PizzaFulfillmentState, Guid>,
-           IMachineMessageHandler<PizzaPaidForEvent>,
-           IMachineMessageHandler<PizzaPreparedEvent>
-        {
-            public DuplicateHandlerProcess() { }
-            public void Initial()
-            {
-                Handle<PizzaPreparedEvent>((message, context) =>
-                {
-                    Become(Duplicate);
-                    return Task.CompletedTask;
-                });
-            }
-            public void Duplicate()
-            {
-                Handle<PizzaPreparedEvent>((message, context) => { return Task.CompletedTask; });
-                Handle<PizzaPreparedEvent>((message, context) => { return Task.CompletedTask; });
-                Handle<PizzaPaidForEvent>((message, context) => { return Task.CompletedTask; });
-            }
-        }
 
         public class PizzaOrderedEvent : IntegrationEvent
         {
@@ -422,78 +301,6 @@ namespace Eventfully.Core.UnitTests
         }
 
 
-        [Fact]
-        public async Task Should_keep_seperate_method_cache_per_concrete_machine()
-        {
-            var process = new PizzaFulfillmentProcess();
-            process.SetState(new PizzaFulfillmentState() { CurrentState = "Ordered" });
-            process.State.CurrentState.ShouldBe("Ordered");
-          
-            var process2 = new PizzaFulfillmentProcessInt64();
-            process2.SetState(new PizzaFulfillmentState() { CurrentState = "Ordered" });
-            process2.State.CurrentState.ShouldBe("Ordered");
-
-
-            var prepareDate = DateTime.UtcNow;
-            await process.Handle(new PizzaPreparedEvent() { PreparedAt = prepareDate }, _fixture.FakeContext);
-            process.State.CurrentState.ShouldBe("Ordered");
-            process.State.PreparedAtUtc.ShouldBe(prepareDate);
-
-            await process2.Handle(new PizzaPreparedEvent() { PreparedAt = prepareDate }, _fixture.FakeContext);
-            process2.State.CurrentState.ShouldBe("Ordered");
-            process2.State.PreparedAtUtc.ShouldBe(prepareDate);
-
-            var payDate = DateTime.UtcNow;
-            await process.Handle(new PizzaPaidForEvent() { PaidAt = payDate }, _fixture.FakeContext);
-            process.State.CurrentState.ShouldBe("Ready");
-            process.State.PaidAtUtc.ShouldBe(payDate);
-
-            await process2.Handle(new PizzaPaidForEvent() { PaidAt = payDate }, _fixture.FakeContext);
-            process2.State.CurrentState.ShouldBe("Ready");
-            process2.State.PaidAtUtc.ShouldBe(payDate);
-
-            var shipDate = DateTime.UtcNow;
-            await process.Handle(new PizzaShippedEvent() { ShippedAt = shipDate }, _fixture.FakeContext);
-            process.State.CurrentState.ShouldBe("OutForDelivery");
-            process.State.ShippedAtUtc.ShouldBe(shipDate);
-
-            await process2.Handle(new PizzaShippedEvent() { ShippedAt = shipDate }, _fixture.FakeContext);
-            process2.State.CurrentState.ShouldBe("OutForDelivery");
-            process2.State.ShippedAtUtc.ShouldBe(shipDate);
-
-            var deliverDate = DateTime.UtcNow;
-            await process.Handle(new PizzaDeliveredEvent() { DeliveredAt = deliverDate }, _fixture.FakeContext);
-            process.State.CurrentState.ShouldBe("Complete");
-            process.State.DeliveredAtUtc.ShouldBe(deliverDate);
-            process.State.CompletedAtUtc.Value.ShouldBeGreaterThan(deliverDate);
-
-            await process2.Handle(new PizzaDeliveredEvent() { DeliveredAt = deliverDate }, _fixture.FakeContext);
-            process2.State.CurrentState.ShouldBe("Complete");
-            process2.State.DeliveredAtUtc.ShouldBe(deliverDate);
-            process2.State.CompletedAtUtc.Value.ShouldBeGreaterThan(deliverDate);
-        }
-
-        [Fact]
-        public async Task Should_transition_with_custom_naming()
-        {
-            var process = new PizzaFulfillmentProcessCustomNaming();
-            process.SetState(new PizzaFulfillmentState() { CurrentState = "Ordered" });
-            process.State.CurrentState.ShouldBe("Ordered");
-
-            var prepareDate = DateTime.UtcNow;
-            await process.Handle(new PizzaPreparedEvent() { PreparedAt = prepareDate }, _fixture.FakeContext);
-            process.State.CurrentState.ShouldBe("Ordered");
-            process.State.PreparedAtUtc.ShouldBe(prepareDate);
-
-            var payDate = DateTime.UtcNow;
-            await process.Handle(new PizzaPaidForEvent() { PaidAt = payDate }, _fixture.FakeContext);
-            process.State.CurrentState.ShouldBe("Ready");
-            process.State.PaidAtUtc.ShouldBe(payDate);
-
-            var shipDate = DateTime.UtcNow;
-            await process.Handle(new PizzaShippedEvent() { ShippedAt = shipDate }, _fixture.FakeContext);
-            process.State.CurrentState.ShouldBe("Complete");
-            process.State.CompletedAtUtc.ShouldNotBeNull();
-        }
+       
     }
 }
