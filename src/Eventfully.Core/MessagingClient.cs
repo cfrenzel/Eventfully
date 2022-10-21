@@ -12,7 +12,7 @@ namespace Eventfully
         /// <param name="command"></param>
         /// <param name="metaData"></param>
         /// <returns></returns>
-        Task Send(IIntegrationCommand command, MessageMetaData metaData = null);
+        Task Send(ICommand command, MessageMetaData metaData = null);
 
 
         /// <summary>
@@ -29,7 +29,7 @@ namespace Eventfully
         /// <param name="command"></param>
         /// <param name="metaData"></param>
         /// <returns></returns>
-        Task SendSynchronously(IIntegrationCommand command, MessageMetaData metaData = null);
+        Task SendSynchronously(ICommand command, MessageMetaData metaData = null);
 
         /// <summary>
         /// Send a pre-serialized Command skipping the outbox, the outbound message filter pipeline will still be honored
@@ -46,7 +46,7 @@ namespace Eventfully
         /// <param name="event"></param>
         /// <param name="metaData"></param>
         /// <returns></returns>
-        Task Publish(IIntegrationEvent @event, MessageMetaData metaData = null);
+        Task Publish(IEvent @event, MessageMetaData metaData = null);
 
 
         /// <summary>
@@ -64,7 +64,7 @@ namespace Eventfully
         /// <param name="event"></param>
         /// <param name="metaData"></param>
         /// <returns></returns>
-        Task PublishSynchronously(IIntegrationEvent @event, MessageMetaData metaData = null);
+        Task PublishSynchronously(IEvent @event, MessageMetaData metaData = null);
     }
 
 
@@ -84,7 +84,7 @@ namespace Eventfully
         /// <param name="command"></param>
         /// <param name="metaData"></param>
         /// <returns></returns>
-        public Task Send(IIntegrationCommand command, MessageMetaData metaData = null)
+        public Task Send(ICommand command, MessageMetaData metaData = null)
         {
             return _messagingService.Send(command, _outbox, metaData);
         }
@@ -108,7 +108,7 @@ namespace Eventfully
         /// <param name="command"></param>
         /// <param name="options"></param>
         /// <returns></returns>
-        public Task SendSynchronously(IIntegrationCommand command, MessageMetaData options = null)
+        public Task SendSynchronously(ICommand command, MessageMetaData options = null)
         {
             return _messagingService.SendSynchronously(command, options);
         }
@@ -131,7 +131,7 @@ namespace Eventfully
         /// <param name="event"></param>
         /// <param name="options"></param>
         /// <returns></returns>
-        public Task Publish(IIntegrationEvent @event, MessageMetaData options = null)
+        public Task Publish(IEvent @event, MessageMetaData options = null)
         {
             return _messagingService.Publish(@event, _outbox, options);
         }
@@ -155,7 +155,7 @@ namespace Eventfully
         /// <param name="event"></param>
         /// <param name="options"></param>
         /// <returns></returns>
-        public Task PublishSynchronously(IIntegrationEvent @event, MessageMetaData options = null)
+        public Task PublishSynchronously(IEvent @event, MessageMetaData options = null)
         {
             return _messagingService.PublishSynchronously(@event, options);
         }

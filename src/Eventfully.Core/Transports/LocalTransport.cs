@@ -1,4 +1,5 @@
-﻿using System;
+﻿/*
+using System;
 using System.Collections.Generic;
 using System.Text;
 using System.Threading;
@@ -76,7 +77,7 @@ namespace Eventfully.Transports
             return null;
         }
 
-        public void SetReplyToForCommand(IEndpoint endpoint, IIntegrationCommand command, MessageMetaData meta)
+        public void SetReplyToForCommand(IEndpoint endpoint, ICommand command, MessageMetaData meta)
         {
             meta = meta ?? new MessageMetaData();
          
@@ -101,3 +102,4 @@ namespace Eventfully.Transports
         }
     }
 }
+*/

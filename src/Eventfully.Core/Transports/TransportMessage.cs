@@ -22,4 +22,6 @@ namespace Eventfully
             this.MetaData = meta;
         }
     }
+    
+    
 }

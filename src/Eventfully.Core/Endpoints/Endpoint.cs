@@ -1,4 +1,5 @@
-﻿using Eventfully.Transports;
+﻿/*
+using Eventfully.Transports;
 using System;
 using System.Collections.Generic;
 using System.Text;
@@ -33,8 +34,8 @@ namespace Eventfully
         {
             _settings = settings;
             this.Name = settings.Name;
-            this.IsReader = settings.IsReader;
-            this.IsWriter = settings.IsWriter;
+            //this.IsReader = settings.IsReader;
+            //this.IsWriter = settings.IsWriter;
 
             if (settings.MessageTypes != null)
             {
@@ -71,7 +72,7 @@ namespace Eventfully
             return Transport.Dispatch(messageTypeIdenfifier, message, this, metaData);
         }
 
-        public virtual void SetReplyToForCommand(IIntegrationCommand command, MessageMetaData meta)
+        public virtual void SetReplyToForCommand(ICommand command, MessageMetaData meta)
         {
             Transport.SetReplyToForCommand(this, command, meta);
         }
@@ -79,3 +80,4 @@ namespace Eventfully
 
     }
 }
+*/

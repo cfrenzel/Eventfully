@@ -1,4 +1,4 @@
-﻿using System;
+﻿/*using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
@@ -18,8 +18,8 @@ namespace Eventfully
         ITransport Transport { get; }
 
         Task Dispatch(string messageTypeIdenfifier, byte[] message, MessageMetaData metaData = null);
-        void SetReplyToForCommand(IIntegrationCommand command, MessageMetaData meta);
+        void SetReplyToForCommand(ICommand command, MessageMetaData meta);
         Task StartAsync(Handler handler, CancellationToken cancellationToken = default);
         Task StopAsync();
     }
-}
+}*/

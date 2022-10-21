@@ -52,12 +52,12 @@ namespace Eventfully.EFCoreOutbox
         /// </summary>
         /// <param name="event"></param>
         /// <returns></returns>
-        public Task Dispatch(string messageTypeIdentifier, byte[] message, MessageMetaData meta, IEndpoint endpoint = null, OutboxDispatchOptions options = null)
+        public Task Dispatch(string messageTypeIdentifier, byte[] message, MessageMetaData meta, IEndpoint2 endpoint = null, OutboxDispatchOptions options = null)
         {
             return this._addToContext(messageTypeIdentifier, message, meta, endpoint, options);
         }
 
-        private Task _addToContext(string messageTypeIdentifier, byte[] message, MessageMetaData meta, IEndpoint endpoint = null, OutboxDispatchOptions options = null)
+        private Task _addToContext(string messageTypeIdentifier, byte[] message, MessageMetaData meta, IEndpoint2 endpoint = null, OutboxDispatchOptions options = null)
         {
 
             options = options ?? new OutboxDispatchOptions();

@@ -10,7 +10,7 @@ namespace Eventfully.Transports.AzureServieBus.IntegrationTests
     public interface ITestMessageHandler
     {
         Task HandleException(ExceptionReceivedEventArgs args);
-        Task HandleMessage(Message m, CancellationToken token);
+        Task HandleMessage(Microsoft.Azure.ServiceBus.Message m, CancellationToken token);
 
     }
 

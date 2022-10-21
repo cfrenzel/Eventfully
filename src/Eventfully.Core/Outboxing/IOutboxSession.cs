@@ -12,7 +12,7 @@ namespace Eventfully.Outboxing
         /// <summary>
         /// Send a message to the outbox
         /// </summary>
-        Task Dispatch(string messageTypeIdentifier, byte[] message, MessageMetaData meta, IEndpoint endpoint = null, OutboxDispatchOptions options = null);
+        Task Dispatch(string messageTypeIdentifier, byte[] message, MessageMetaData meta, IEndpoint2 endpoint = null, OutboxDispatchOptions options = null);
 
         ///// <summary>
         ///// Find messages from the outbox that are ready and relay the to their true endpoint

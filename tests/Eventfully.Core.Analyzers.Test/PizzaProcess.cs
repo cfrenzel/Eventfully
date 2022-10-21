@@ -110,7 +110,7 @@ namespace Eventfully.Core.Analyzers.Test
 
     }
 
-    public class PizzaOrderedEvent : IntegrationEvent
+    public class PizzaOrderedEvent : Event
     {
         public override string MessageType => "Pizza.Ordered";
         public Guid OrderId { get; set; }
@@ -119,7 +119,7 @@ namespace Eventfully.Core.Analyzers.Test
         public DateTime OrderedAt { get; set; }
     }
      
-    public class PizzaPaidForEvent : IntegrationEvent
+    public class PizzaPaidForEvent : Event
     {
         public Guid OrderId { get; set; }
         public override string MessageType => "Pizza.PaidFor";
@@ -128,19 +128,19 @@ namespace Eventfully.Core.Analyzers.Test
         public Decimal Amount { get; set; }
     }
 
-    public class PizzaPreparedEvent : IntegrationEvent
+    public class PizzaPreparedEvent : Event
     {
         public Guid OrderId { get; set; }
         public override string MessageType => "Pizza.Prepared";
         public DateTime PreparedAt { get; set; }
     }
-    public class PizzaShippedEvent : IntegrationEvent
+    public class PizzaShippedEvent : Event
     {
         public Guid OrderId { get; set; }
         public override string MessageType => "Pizza.Shipped";
         public DateTime ShippedAt { get; set; }
     }
-    public class PizzaDeliveredEvent : IntegrationEvent
+    public class PizzaDeliveredEvent : Event
     {
         public Guid OrderId { get; set; }
         public override string MessageType => "Pizza.Delivered";

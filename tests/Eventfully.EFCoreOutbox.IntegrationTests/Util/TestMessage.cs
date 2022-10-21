@@ -4,7 +4,7 @@ using System.Text;
 
 namespace Eventfully.EFCoreOutbox.IntegrationTests
 {
-    public class TestMessage : IntegrationCommand
+    public class TestMessage : Command
     {
         public override string MessageType => "Test.MessageType";
    

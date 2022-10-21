@@ -16,14 +16,14 @@ namespace Eventfully.Transports.AzureServiceBus
     public class RecoverabilityContext
     {
         public bool SkipMessage { get; set; } = false;
-        public Message Message { get; set; }
+        public Microsoft.Azure.ServiceBus.Message Message { get; set; }
         public IMessageReceiver Receiver { get; set; }
         public IEndpoint Endpoint { get; set; }
 
         public Dictionary<string,object> TempData = new Dictionary<string, object>();
 
-        public Message TempMessage { get; set; }
-        public RecoverabilityContext(IMessageReceiver receiver, IEndpoint endpoint, Message message)
+        public Microsoft.Azure.ServiceBus.Message TempMessage { get; set; }
+        public RecoverabilityContext(IMessageReceiver receiver, IEndpoint endpoint, Microsoft.Azure.ServiceBus.Message message)
         {
             Receiver = receiver;
             Endpoint = endpoint;

@@ -7,8 +7,7 @@ using Eventfully.Outboxing;
 namespace Eventfully.Handlers
 {
     /// <summary>
-    /// Inspired by Jimmy Bogard's blog and MediatR project
-    /// https://github.com/jbogard/MediatR/blob/master/LICENSE
+    /// Inspired by https://github.com/jbogard/MediatR/blob/master/LICENSE
     /// </summary>
     public class MessageDispatcher : IMessageDispatcher
     {
@@ -20,31 +19,31 @@ namespace Eventfully.Handlers
                 _handlerFactory = handlerFactory;
         }
 
-        public async Task Dispatch(IIntegrationMessage message, MessageContext context)
+        public async Task Dispatch(IMessage message, MessageContext context)
         {
             var handler = GetHandler(message);
             await handler.Handle(message, context, _handlerFactory);
         }
 
-        private static IntegrationMessageDispatcherHandler GetHandler(IIntegrationMessage message)
+        private static MessageDispatcherHandler GetHandler(IMessage message)
         {
-            var genericDispatcherType = typeof(IntegrationMessageDispatcherHandler<>)
+            var genericDispatcherType = typeof(MessageDispatcherHandler<>)
                 .MakeGenericType(message.GetType());
 
-            return (IntegrationMessageDispatcherHandler)
+            return (MessageDispatcherHandler)
                 Activator.CreateInstance(genericDispatcherType);
         }
 
-        private abstract class IntegrationMessageDispatcherHandler
+        private abstract class MessageDispatcherHandler
         {
-            public abstract Task Handle(IIntegrationMessage message, MessageContext context, IServiceFactory handlerFactory);
+            public abstract Task Handle(IMessage message, MessageContext context, IServiceFactory handlerFactory);
         }
 
 
-        private class IntegrationMessageDispatcherHandler<T> : IntegrationMessageDispatcherHandler
-            where T : IIntegrationMessage
+        private class MessageDispatcherHandler<T> : MessageDispatcherHandler
+            where T : IMessage
         {
-            public override Task Handle(IIntegrationMessage message, MessageContext context, IServiceFactory handlerFactory)
+            public override Task Handle(IMessage message, MessageContext context, IServiceFactory handlerFactory)
             {
                 return HandleCore((T)message, context, handlerFactory);
             }
@@ -58,7 +57,7 @@ namespace Eventfully.Handlers
                     //is there a processManager/Saga for this message type
                     if (context.Props != null && context.Props.HasSagaHandler)
                     {
-                        var sagaProps = MessagingMap.GetSagaProps(context.Props.SagaType) ??
+                        var sagaProps = MessagingMap2.GetSagaProps(context.Props.SagaType) ??
                             throw new ApplicationException($"Couldn't find saga for Handler: {context.Props.Type}, SagaType: {context.Props.SagaType}");
                         
                         var saga = (ISaga)scope.GetInstance(sagaProps.SagaType);

@@ -37,6 +37,11 @@ namespace Eventfully.EFCoreOutbox
         public int MaxConcurrency { get; set; } = 1;
 
         public IRetryIntervalStrategy RetryStrategy { get; set; }
+        
+        public OutboxSettings(string sqlConnectionString = null)
+        {
+            this.SqlConnectionString = sqlConnectionString;
+        }
     }
 
 

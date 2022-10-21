@@ -41,12 +41,12 @@ namespace Eventfully.Core.UnitTests
                 //this.MessagingService.StartAsync()
             }
 
-            public class TestMessage : IIntegrationEvent
+            public class TestMessage : IEvent
             {
                 public string MessageType => "Test.MessagingServiceTests";
                 public string Description { get; set; } = "TestMessage";
             }
-            public class UnkownMessage : IIntegrationEvent
+            public class UnkownMessage : IEvent
             {
                 public string MessageType => "Unkown.MessagingServiceTests";
                 public string Description { get; set; } = "TestMessage";

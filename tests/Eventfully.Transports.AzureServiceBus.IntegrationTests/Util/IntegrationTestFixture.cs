@@ -99,7 +99,7 @@ namespace Eventfully.Transports.AzureServieBus.IntegrationTests
         public static IEndpoint QueueEndpoint => _queueEndpoint;
         public static IEndpoint SubscriptionEndpoint => _subscriptionEndpoint;
 
-        public static byte[] Serialize(IIntegrationMessage message)
+        public static byte[] Serialize(IMessage message)
         {
             string messageBody = JsonConvert.SerializeObject(message);
             var messageBytes = Encoding.UTF8.GetBytes(messageBody);
@@ -142,7 +142,7 @@ namespace Eventfully.Transports.AzureServieBus.IntegrationTests
         public static async Task WriteToQueue(IEndpoint queueEndpoint, string messageTypeId, byte[] messageBytes, MessageMetaData meta = null)
         {
             var queueClient = new QueueClient(new ServiceBusConnectionStringBuilder(queueEndpoint.Settings.ConnectionString), ReceiveMode.ReceiveAndDelete, RetryPolicy.NoRetry);
-            Message m = new Message(messageBytes);
+            Microsoft.Azure.ServiceBus.Message m = new Microsoft.Azure.ServiceBus.Message(messageBytes);
             new AzureServiceBusMetaDataMapper().ApplyMetaData(m, meta ?? new MessageMetaData(), messageTypeId);
             await queueClient.SendAsync(m);
         }
@@ -150,7 +150,7 @@ namespace Eventfully.Transports.AzureServieBus.IntegrationTests
         public static async Task WriteToTopic(IEndpoint topicEndpoint, string messageTypeId, byte[] messageBytes, MessageMetaData meta = null)
         {
             var topicClient = new TopicClient(new ServiceBusConnectionStringBuilder(topicEndpoint.Settings.ConnectionString), RetryPolicy.NoRetry);
-            Message m = new Message(messageBytes);
+            Microsoft.Azure.ServiceBus.Message m = new Microsoft.Azure.ServiceBus.Message(messageBytes);
             new AzureServiceBusMetaDataMapper().ApplyMetaData(m, meta ?? new MessageMetaData(), messageTypeId);
             await topicClient.SendAsync(m);
         }
@@ -178,7 +178,7 @@ namespace Eventfully.Transports.AzureServieBus.IntegrationTests
         {
             public MockHAndler() { }
             public Task HandleException(ExceptionReceivedEventArgs args) => Task.CompletedTask;
-            public Task HandleMessage(Message m, CancellationToken token) => Task.CompletedTask;
+            public Task HandleMessage(Microsoft.Azure.ServiceBus.Message m, CancellationToken token) => Task.CompletedTask;
         }
 
         //public class THAndler : ITestMessageHandler

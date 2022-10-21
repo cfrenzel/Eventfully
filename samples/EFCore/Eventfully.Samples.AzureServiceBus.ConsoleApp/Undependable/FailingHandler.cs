@@ -8,7 +8,7 @@ namespace Eventfully.Samples.ConsoleApp
     public class FailingHandler
     {
 
-        public class Event : IntegrationEvent
+        public class Event : Eventfully.Event
         {
             public override string MessageType => "FailingHandler.Created";
             public DateTime FailUntilUtc { get; set; }

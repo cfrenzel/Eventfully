@@ -7,6 +7,6 @@ namespace Eventfully.Handlers
 {
     public interface IMessageDispatcher
     {
-        Task Dispatch(IIntegrationMessage message, MessageContext context);
+        Task Dispatch(IMessage message, MessageContext context);
     }
 }

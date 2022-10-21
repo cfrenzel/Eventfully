@@ -162,13 +162,13 @@ namespace Eventfully.Core.UnitTests
         }
 
 
-        public class PizzaOrderedEvent : IntegrationEvent
+        public class PizzaOrderedEvent : Event
         {
             public override string MessageType => "Pizza.Ordered";
             public DateTime? OrderedAt { get; set; }
         }
 
-        public class PizzaPaidForEvent : IntegrationEvent
+        public class PizzaPaidForEvent : Event
         {
             public override string MessageType => "Pizza.PaidFor";
             public DateTime PaidAt { get; set; }
@@ -176,17 +176,17 @@ namespace Eventfully.Core.UnitTests
             public Decimal Amount { get; set; }
         }
 
-        public class PizzaPreparedEvent : IntegrationEvent
+        public class PizzaPreparedEvent : Event
         {
             public override string MessageType => "Pizza.Prepared";
             public DateTime PreparedAt { get; set; }
         }
-        public class PizzaShippedEvent : IntegrationEvent
+        public class PizzaShippedEvent : Event
         {
             public override string MessageType => "Pizza.Shipped";
             public DateTime ShippedAt { get; set; }
         }
-        public class PizzaDeliveredEvent : IntegrationEvent
+        public class PizzaDeliveredEvent : Event
         {
             public override string MessageType => "Pizza.Delivered";
             public DateTime DeliveredAt { get; set; }

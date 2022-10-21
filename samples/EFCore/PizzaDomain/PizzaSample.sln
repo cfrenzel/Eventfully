@@ -1,0 +1,22 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OrderingApi", "OrderingApi\OrderingApi.csproj", "{2EF91C92-4B48-40B6-9ADF-BD525C0D76CF}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Common.Messages", "Common.Messages\Common.Messages.csproj", "{9354A6A9-8D4A-4544-B2A2-1EF3319E4460}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{2EF91C92-4B48-40B6-9ADF-BD525C0D76CF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2EF91C92-4B48-40B6-9ADF-BD525C0D76CF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2EF91C92-4B48-40B6-9ADF-BD525C0D76CF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2EF91C92-4B48-40B6-9ADF-BD525C0D76CF}.Release|Any CPU.Build.0 = Release|Any CPU
+		{9354A6A9-8D4A-4544-B2A2-1EF3319E4460}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9354A6A9-8D4A-4544-B2A2-1EF3319E4460}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9354A6A9-8D4A-4544-B2A2-1EF3319E4460}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9354A6A9-8D4A-4544-B2A2-1EF3319E4460}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal

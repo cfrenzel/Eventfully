@@ -13,6 +13,6 @@ namespace Eventfully
     /// <typeparam name="T"></typeparam>
     public interface ICustomMessageHandler<T>
     {
-        Task Handle(IIntegrationMessage message, MessageContext context);
+        Task Handle(IMessage message, MessageContext context);
     }
 }

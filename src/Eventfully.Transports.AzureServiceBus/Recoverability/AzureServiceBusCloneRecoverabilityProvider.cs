@@ -67,7 +67,7 @@ namespace Eventfully.Transports.AzureServiceBus
             return Task.CompletedTask;
         }
 
-        private async Task<bool> _handleMaxRetry(int recoveryCount, Message message, RecoverabilityContext context)
+        private async Task<bool> _handleMaxRetry(int recoveryCount, Microsoft.Azure.ServiceBus.Message message, RecoverabilityContext context)
         {
             if (message.SystemProperties.DeliveryCount > 1 || recoveryCount > _maxDeliveryCount)
             {
@@ -77,7 +77,7 @@ namespace Eventfully.Transports.AzureServiceBus
             return false;
         }
 
-        private int _getRecoveryCount(Message message, RecoverabilityContext context)
+        private int _getRecoveryCount(Microsoft.Azure.ServiceBus.Message message, RecoverabilityContext context)
         {
             var count = message.UserProperties.ContainsKey("RecoveryCount") ?
                (int)message.UserProperties["RecoveryCount"]

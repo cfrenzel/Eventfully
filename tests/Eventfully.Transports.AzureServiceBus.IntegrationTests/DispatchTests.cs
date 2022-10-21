@@ -58,7 +58,7 @@ namespace Eventfully.Transports.AzureServieBus.IntegrationTests
             var messageBytes = IntegrationTestFixture.Serialize(message);
 
             var fakeHandler = A.Fake<ITestMessageHandler>();
-            A.CallTo(() => fakeHandler.HandleMessage(A<Message>.Ignored, A<CancellationToken>.Ignored)).Returns(Task.CompletedTask);
+            A.CallTo(() => fakeHandler.HandleMessage(A<Microsoft.Azure.ServiceBus.Message>.Ignored, A<CancellationToken>.Ignored)).Returns(Task.CompletedTask);
             A.CallTo(() => fakeHandler.HandleException(A<ExceptionReceivedEventArgs>.Ignored)).Returns(Task.CompletedTask);
 
             var client = IntegrationTestFixture.ReadFromQueue(IntegrationTestFixture.QueueEndpoint, fakeHandler);
@@ -67,7 +67,7 @@ namespace Eventfully.Transports.AzureServieBus.IntegrationTests
             await Task.Delay(1000);
 
              A.CallTo(() => fakeHandler.HandleMessage(
-                A<Message>.That.Matches(x => 
+                A<Microsoft.Azure.ServiceBus.Message>.That.Matches(x => 
                     x.MessageId.Equals(message.Id.ToString())
                     && x.Body.SequenceEqual(messageBytes)
                 ),
@@ -94,7 +94,7 @@ namespace Eventfully.Transports.AzureServieBus.IntegrationTests
             };
             var messageBytes = IntegrationTestFixture.Serialize(message);
             var fakeHandler = A.Fake<ITestMessageHandler>();
-            A.CallTo(() => fakeHandler.HandleMessage(A<Message>.Ignored, A<CancellationToken>.Ignored)).Returns(Task.CompletedTask);
+            A.CallTo(() => fakeHandler.HandleMessage(A<Microsoft.Azure.ServiceBus.Message>.Ignored, A<CancellationToken>.Ignored)).Returns(Task.CompletedTask);
             A.CallTo(() => fakeHandler.HandleException(A<ExceptionReceivedEventArgs>.Ignored)).Returns(Task.CompletedTask);
 
             var client = IntegrationTestFixture.ReadFromTopicSubscription(IntegrationTestFixture.SubscriptionEndpoint, fakeHandler);
@@ -102,7 +102,7 @@ namespace Eventfully.Transports.AzureServieBus.IntegrationTests
             await Task.Delay(1000);
 
             A.CallTo(() => fakeHandler.HandleMessage(
-                A<Message>.That.Matches(x => 
+                A<Microsoft.Azure.ServiceBus.Message>.That.Matches(x => 
                     x.MessageId.Equals(message.Id.ToString()) &&
                     x.Body.SequenceEqual(messageBytes)
                 ),
@@ -128,7 +128,7 @@ namespace Eventfully.Transports.AzureServieBus.IntegrationTests
             var messageBytes = IntegrationTestFixture.Serialize(message);
 
             var fakeHandler = A.Fake<ITestMessageHandler>();
-            A.CallTo(() => fakeHandler.HandleMessage(A<Message>.Ignored, A<CancellationToken>.Ignored)).Returns(Task.CompletedTask);
+            A.CallTo(() => fakeHandler.HandleMessage(A<Microsoft.Azure.ServiceBus.Message>.Ignored, A<CancellationToken>.Ignored)).Returns(Task.CompletedTask);
             A.CallTo(() => fakeHandler.HandleException(A<ExceptionReceivedEventArgs>.Ignored)).Returns(Task.CompletedTask);
 
             var client = IntegrationTestFixture.ReadFromQueue(IntegrationTestFixture.QueueEndpoint, fakeHandler);
@@ -138,7 +138,7 @@ namespace Eventfully.Transports.AzureServieBus.IntegrationTests
             await Task.Delay(9000);
 
             A.CallTo(() => fakeHandler.HandleMessage(
-               A<Message>.That.Matches(x =>
+               A<Microsoft.Azure.ServiceBus.Message>.That.Matches(x =>
                    x.MessageId.Equals(message.Id.ToString())
                    && x.Body.SequenceEqual(messageBytes)
                ),
@@ -148,7 +148,7 @@ namespace Eventfully.Transports.AzureServieBus.IntegrationTests
             await Task.Delay(5000);
 
             A.CallTo(() => fakeHandler.HandleMessage(
-               A<Message>.That.Matches(x =>
+               A<Microsoft.Azure.ServiceBus.Message>.That.Matches(x =>
                    x.MessageId.Equals(message.Id.ToString())
                    && x.Body.SequenceEqual(messageBytes)
                ),
@@ -171,7 +171,7 @@ namespace Eventfully.Transports.AzureServieBus.IntegrationTests
             var messageBytes = IntegrationTestFixture.Serialize(message);
 
             var fakeHandler = A.Fake<ITestMessageHandler>();
-            A.CallTo(() => fakeHandler.HandleMessage(A<Message>.Ignored, A<CancellationToken>.Ignored)).Returns(Task.CompletedTask);
+            A.CallTo(() => fakeHandler.HandleMessage(A<Microsoft.Azure.ServiceBus.Message>.Ignored, A<CancellationToken>.Ignored)).Returns(Task.CompletedTask);
             A.CallTo(() => fakeHandler.HandleException(A<ExceptionReceivedEventArgs>.Ignored)).Returns(Task.CompletedTask);
 
           
@@ -185,7 +185,7 @@ namespace Eventfully.Transports.AzureServieBus.IntegrationTests
             await Task.Delay(3000);
            
             A.CallTo(() => fakeHandler.HandleMessage(
-               A<Message>.That.Matches(x =>
+               A<Microsoft.Azure.ServiceBus.Message>.That.Matches(x =>
                    x.MessageId.Equals(message.Id.ToString())
                    && x.Body.SequenceEqual(messageBytes)
                ),

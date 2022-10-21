@@ -5,7 +5,7 @@ using System.Text;
 namespace Eventfully.Samples.ConsoleApp
 {
 
-    public class PaymentMethodCreated : IntegrationEvent
+    public class PaymentMethodCreated : Event
     {
         public override string MessageType => "Sales.PaymentMethodCreated";
 

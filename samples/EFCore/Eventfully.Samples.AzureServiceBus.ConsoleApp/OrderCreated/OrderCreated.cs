@@ -5,7 +5,7 @@ using System.Text;
 namespace Eventfully.Samples.ConsoleApp
 {
 
-    public class OrderCreated : IntegrationEvent
+    public class OrderCreated : Event
     {
         public override string MessageType => "Sales.OrderCreated";
 

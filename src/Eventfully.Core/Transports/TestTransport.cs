@@ -1,4 +1,5 @@
-﻿using System;
+﻿/*
+using System;
 using System.Collections.Generic;
 using System.Text;
 using System.Threading;
@@ -104,7 +105,7 @@ namespace Eventfully.Transports.Testing
             throw new NotImplementedException();
         }
 
-        public void SetReplyToForCommand(IIntegrationCommand command, MessageMetaData meta)
+        public void SetReplyToForCommand(ICommand command, MessageMetaData meta)
         {
             throw new NotImplementedException();
         }
@@ -144,10 +145,11 @@ namespace Eventfully.Transports.Testing
         public TestTransport() { }// TestEndpoint endpoint, Func<string, byte[], IEndpoint, MessageMetaData, Task> dispatchCallback)
         public  Task Dispatch(string messageTypeIdentifier, byte[] message, IEndpoint endpoint, MessageMetaData metaData = null) => Task.CompletedTask;// => _dispatchCallBack(messageTypeIdentifier, message, endpoint, metaData);
         public  IEndpoint FindEndpointForReply(MessageContext commandContext) => null;// Endpoint;
-        public  void SetReplyToForCommand(IEndpoint endpoint, IIntegrationCommand command, MessageMetaData meta) => meta.ReplyTo = null;//this.Endpoint.Name;
+        public  void SetReplyToForCommand(IEndpoint endpoint, ICommand command, MessageMetaData meta) => meta.ReplyTo = null;//this.Endpoint.Name;
         public  Task StartAsync(IEndpoint endpoint, Handler handler, CancellationToken cancellationToken) => Task.CompletedTask;
         public Task StopAsync() => Task.CompletedTask;
        
     }
 
 }
+*/

@@ -6,7 +6,7 @@ using Microsoft.Azure.ServiceBus;
 
 namespace Eventfully.Transports.AzureServiceBus
 {
-    public class AzureServiceBusTransportSettings : TransportSettings
+    public class AzureServiceBusTransportSettings : TransportSettings, ISupportQueues<EndpointSettings>, ISupportTopics<EndpointSettings>
     {
         private readonly ITransportFactory _factory = new AzureServiceBusTransportFactory();
         
@@ -14,17 +14,47 @@ namespace Eventfully.Transports.AzureServiceBus
 
         public AzureServiceBusTransportSettings(){}
 
+        public string ConnectionString { get; set; }
         public bool SpecialFeature { get;  set; }
 
-        public AzureServiceBusTransportSettings UseSpecialFeature()
+        // public AzureServiceBusTransportSettings UseSpecialFeature()
+        // {
+        //     this.SpecialFeature = true;
+        //     return this;
+        // }
+
+        public AzureServiceBusTransportSettings(string connectionString)
         {
-            this.SpecialFeature = true;
-            return this;
+            this.ConnectionString = connectionString;
+        }
+
+        public EndpointSettings ConfigureQueue(string name)
+        {
+            return ConfigureEndpoint(name);
+        }
+
+        public EndpointSettings ConfigureTopic(string name)
+        {
+            return ConfigureEndpoint(name);
+        }
+        public EndpointSettings ConfigureTopic(string name, string subscriptionName)
+        {
+            return ConfigureEndpoint(name);
+        }
+        public EndpointSettings ConfigureTopic<M>(string name, string subscriptionName = null, Action<MessageSettings> configBuilder = null)
+        {
+            return ConfigureEndpoint(name).BindEvent<M>(configBuilder);
+        }
+        
+
+        public override EndpointSettings ConfigureEndpoint(string name)
+        {
+            return base.ConfigureEndpoint(name);
         }
     }
 
 
-    public class AzureServiceBusTransport : ITransport
+    public class AzureServiceBusTransport : Transport2
     {
         private readonly TransportSettings _settings;
         private readonly AzureServiceBusMetaDataMapper _metaDataMapper;
@@ -65,7 +95,7 @@ namespace Eventfully.Transports.AzureServiceBus
                     return _messagePumpTask = _messagePump.StartAsync(cancellationToken);
                 }
             }
-             return Task.CompletedTask;
+            return Task.CompletedTask;
         }
 
         public Task StopAsync()
@@ -90,7 +120,7 @@ namespace Eventfully.Transports.AzureServiceBus
      
         protected Task _dispatch(string messageTypeIdentifier, byte[] messageBody, IEndpoint endpoint, MessageMetaData meta = null)
         {
-            var message = new Message(messageBody);
+            var message = new Microsoft.Azure.ServiceBus.Message(messageBody);
             var sender = AzureServiceBusClientCache.GetSender(endpoint.Settings.ConnectionString);
             _metaDataMapper.ApplyMetaData(message, meta, messageTypeIdentifier);
 
@@ -146,7 +176,7 @@ namespace Eventfully.Transports.AzureServiceBus
         }
 
 
-        public void SetReplyToForCommand(IEndpoint endpoint, IIntegrationCommand command, MessageMetaData meta)
+        public void SetReplyToForCommand(IEndpoint endpoint, ICommand command, MessageMetaData meta)
         {
             meta = meta ?? new MessageMetaData();
             //if (meta == null)

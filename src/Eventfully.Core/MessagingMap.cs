@@ -1,4 +1,4 @@
-﻿using System;
+﻿/*using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
@@ -27,7 +27,7 @@ namespace Eventfully
             if (_messageTypePropMap.ContainsKey(type))
                 throw new InvalidOperationException($"Duplicate Message Type registered.  MessageType: {type}");
 
-            var message = (IIntegrationMessage)Activator.CreateInstance(type, true);
+            var message = (IMessage)Activator.CreateInstance(type, true);
             var props = new MessageTypeProperties(type, message.MessageType, _extractorInterface.IsAssignableFrom(type));
             AddMessageType(props);
             return props;
@@ -78,12 +78,11 @@ namespace Eventfully
             return props;
         }
 
-
-
         public static IEnumerable<IEndpoint> FindAllEndpoints()
         {
             return _nameEndpointMap.Values;
         }
+        
         public static IEndpoint FindEndpointByName(string name)
         {
             IEndpoint endpoint = null;
@@ -103,12 +102,12 @@ namespace Eventfully
         }
 
 
-        public static IEndpoint FindEndpoint(IIntegrationMessage message)
+        public static IEndpoint FindEndpoint(IMessage message)
         {
             IEndpoint endpoint = null;
             if (_messageTypeIdentifierRouteToEndpointMap.TryGetValue(message.MessageType, out endpoint))
                 return endpoint;
-            else if (message is IIntegrationEvent)
+            else if (message is IEvent)
             {
                 //check for a default route for events and adding to the route map
                 if (_defaultPublishToEndpoint != null)
@@ -182,9 +181,9 @@ namespace Eventfully
         }
 
 
-        public static void InitializeTypes(params Assembly[] assemblies)
+        /*public static void InitializeTypes(params Assembly[] assemblies)
         {
-            var messageInterface = typeof(IIntegrationMessage);
+            var messageInterface = typeof(IMessage);
             var handlerInterface = typeof(IMessageHandler<>);
             var customHandlerInterface = typeof(ICustomMessageHandler<>);
             var processManagerInterface = typeof(ISaga<,>);
@@ -237,7 +236,7 @@ namespace Eventfully
              .Where(it => it.IsGenericType && genericTypes.Contains(it.GetGenericTypeDefinition()));
 
             return interfaces != null && interfaces.Count() > 0;
-        }
+        }#1#
     }
 
     public class MessageTypeProperties
@@ -290,4 +289,4 @@ namespace Eventfully
                 MessageTypes = messageTypes;
         }
     }
-}
+}*/

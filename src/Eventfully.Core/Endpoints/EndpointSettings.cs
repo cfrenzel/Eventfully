@@ -1,4 +1,5 @@
-﻿using Eventfully.Filters;
+﻿/*
+using Eventfully.Filters;
 using Eventfully.Transports;
 using System;
 using System.Collections.Generic;
@@ -7,7 +8,10 @@ using System.Text;
 namespace Eventfully
 {
 
-    public class EndpointSettings : IEndpointFluent
+    
+    
+    
+    public class EndpointSettings :  ISupportFiltersFluent<EndpointSettings>
     {
         public string Name { get; set; }
         public string ConnectionString { get; set; }
@@ -19,55 +23,40 @@ namespace Eventfully
 
         public List<Type> MessageTypes { get; set; } = new List<Type>();
         public List<string> MessageTypeIdentifiers { get; set; } = new List<string>();
-
-
         public TransportSettings TransportSettings { get; set; }
 
+        public List<MessageSettings> MessageSettings = new List<MessageSettings>();
+
         internal readonly List<ITransportMessageFilter> InboundTransportFilters = new List<ITransportMessageFilter>();
-        internal readonly List<IIntegrationMessageFilter> InboundIntegrationFilters = new List<IIntegrationMessageFilter>();
+        internal readonly List<IMessageFilter> InboundMessageFilters = new List<IMessageFilter>();
         internal readonly List<ITransportMessageFilter> OutboundTransportFilters = new List<ITransportMessageFilter>();
-        internal readonly List<IIntegrationMessageFilter> OutboundIntegrationFilters = new List<IIntegrationMessageFilter>();
-
-
-        public EndpointSettings(string name) : this(name, null)
-        {
-        }
-
-        public EndpointSettings(string name, string connectionString)
+        internal readonly List<IMessageFilter> OutboundMessageFilters = new List<IMessageFilter>();
+        
+        public EndpointSettings(string name)//, string connectionString)
         {
             this.Name = name;
-            this.ConnectionString = connectionString;
         }
 
-        public EndpointSettings AsOutbound()
+       
+        public virtual EndpointSettings BindEvent<T>(Action<MessageSettings> configBuilder = null) //where T : IEvent
         {
-            this.IsWriter = true;
-            return this;
-        }
-
-        public EndpointSettings AsInbound()
-        {
-            this.IsReader = true;
-            return this;
-        }
-        public EndpointSettings AsInboundOutbound()
-        {
-            this.IsReader = true;
-            this.IsWriter = true;
-            return this;
-        }
-
-        public virtual BindMessageSettings<T> BindEvent<T>() where T : IIntegrationEvent
-        {
+            var settings = new MessageSettings(typeof(T));
+            this.MessageSettings.Add((settings));
             this.MessageTypes.Add(typeof(T));
-            return new BindMessageSettings<T>(this);
+            if(configBuilder != null)
+                configBuilder.Invoke(settings);
+            return this;
         }
 
-        public virtual BindMessageSettings<T> BindCommand<T>() where T : IIntegrationCommand
+        public virtual EndpointSettings BindCommand<T>(Action<MessageSettings> configBuilder = null) //where T : ICommand
         {
+            var settings = new MessageSettings(typeof(T));
+            this.MessageSettings.Add((settings));
             this.MessageTypes.Add(typeof(T));
-            return new BindMessageSettings<T>(this);
-        }
+            if(configBuilder != null)
+                configBuilder.Invoke(settings);
+            return this;
+         }
 
         public virtual EndpointSettings BindCommand(string messageTypeIdentifier)
         {
@@ -75,16 +64,34 @@ namespace Eventfully
             return this;
         }
 
+        /*public  EndpointSettings UseAesEncryption(string key, bool isBase64Encoded = false)
+        {
+            if (String.IsNullOrEmpty(key))
+                throw new InvalidOperationException("UseEncryption requires a non empty value for key");
+
+            return UseAesEncryption(null, new StringKeyProvider(key, isBase64Encoded));
+        }
+
+        public EndpointSettings UseAesEncryption(IEncryptionKeyProvider keyProvider)
+        {
+            return UseAesEncryption(null, keyProvider);
+        }
+
+        public EndpointSettings UseAesEncryption(string keyName, IEncryptionKeyProvider keyProvider)
+        {
+            this.WithFilter(new LevelTypeTransportFilter<T>(
+                new AesEncryptionTransportFilter(keyName, keyProvider)
+            ));
+            return this;
+        }#1#
 
         public EndpointSettings WithFilter(params ITransportMessageFilter[] filters)
         {
-            //if (!this.IsReader)
-            //    throw new InvalidOperationException("Endpoint must be marked AsInbound to add InboundFilter");
             AddFilter(filters);
             return this;
         }
 
-        public EndpointSettings WithFilter(params IIntegrationMessageFilter[] filters)
+        public EndpointSettings WithFilter(params IMessageFilter[] filters)
         {
             AddFilter(filters);
             return this;
@@ -104,16 +111,16 @@ namespace Eventfully
             }
         }
 
-        internal void AddFilter(params IIntegrationMessageFilter[] filters)
+        internal void AddFilter(params IMessageFilter[] filters)
         {
             foreach (var filter in filters)
             {
                 if (filter != null)
                 {
                     if ((filter.SupportsDirection & FilterDirection.Inbound) == FilterDirection.Inbound)
-                        this.InboundIntegrationFilters.Add(filter);
+                        this.InboundMessageFilters.Add(filter);
                     if ((filter.SupportsDirection & FilterDirection.Outbound) == FilterDirection.Outbound)
-                        this.OutboundIntegrationFilters.Add(filter);
+                        this.OutboundMessageFilters.Add(filter);
                 }
             }
         }
@@ -121,7 +128,7 @@ namespace Eventfully
 
 
 
-        public EndpointSettings AsEventDefault()
+        /*public EndpointSettings AsEventDefault()
         {
             if (!this.IsWriter)
                 throw new InvalidOperationException("Endpoint must be marked AsOutbound to be marked as EventDefault");
@@ -136,10 +143,10 @@ namespace Eventfully
 
             this.IsReplyDefault = true;
             return this;
-        }
+        }#1#
     }
 
-    public abstract class EndpointSubSettings : IEndpointFluent
+    /*public abstract class EndpointSubSettings : IEndpointFluent
     {
         protected readonly IEndpointFluent _settings;
 
@@ -150,7 +157,7 @@ namespace Eventfully
 
         public TransportSettings TransportSettings { get => _settings.TransportSettings; set => _settings.TransportSettings = value; }
 
-        public EndpointSettings AsEventDefault()
+        /*public EndpointSettings AsEventDefault()
         {
             return _settings.AsEventDefault();
         }
@@ -173,9 +180,9 @@ namespace Eventfully
         public EndpointSettings AsReplyDefault()
         {
             return _settings.AsReplyDefault();
-        }
+        }#2#
 
-        public BindMessageSettings<T> BindCommand<T>() where T : IIntegrationCommand
+        public BindMessageSettings<T> BindCommand<T>() where T : ICommand
         {
             return _settings.BindCommand<T>();
         }
@@ -185,27 +192,27 @@ namespace Eventfully
             return _settings.BindCommand(messageTypeIdentifier);
         }
 
-        public BindMessageSettings<T> BindEvent<T>() where T : IIntegrationEvent
+        public BindMessageSettings<T> BindEvent<T>() where T : IEvent
         {
             return _settings.BindEvent<T>();
         }
 
 
-        public EndpointSettings WithFilter(params IIntegrationMessageFilter[] filters)
+        public EndpointSettings WithFilter(params IMessageLevelFilter[] filters)
         {
             return _settings.WithFilter(filters);
         }
 
-        public EndpointSettings WithFilter(params ITransportMessageFilter[] filters)
+        public EndpointSettings WithFilter(params ITransportLevelFilter[] filters)
         {
             return _settings.WithFilter(filters);
         }
 
-    }
+    }#1#
 
 
-    public class BindMessageSettings<T> : EndpointSubSettings
-        where T : IIntegrationMessage
+    /*public class BindMessageSettings<T> : EndpointSubSettings
+        where T : IMessage
     {
 
         public BindMessageSettings(EndpointSettings settings) : base(settings)
@@ -227,14 +234,15 @@ namespace Eventfully
 
         public BindMessageSettings<T> UseAesEncryption(string keyName, IEncryptionKeyProvider keyProvider)
         {
-            _settings.WithFilter(new MessageTypeTransportFilter<T>(
+            _settings.WithFilter(new LevelTypeTransportFilter<T>(
                 new AesEncryptionTransportFilter(keyName, keyProvider)
             ));
             return this;
         }
-    }
+    }#1#
 
 
    
 
 }
+*/

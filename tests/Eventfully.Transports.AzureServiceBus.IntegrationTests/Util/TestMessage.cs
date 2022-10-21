@@ -4,7 +4,7 @@ using System.Text;
 
 namespace Eventfully.Transports.AzureServieBus.IntegrationTests
 {
-    public class TestMessage : IntegrationEvent
+    public class TestMessage : Event
     {
         public override string MessageType => "Test.AsbMessageType";
    

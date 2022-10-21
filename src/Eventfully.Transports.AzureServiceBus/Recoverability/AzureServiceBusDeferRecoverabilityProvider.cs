@@ -44,7 +44,7 @@ namespace Eventfully.Transports.AzureServiceBus
         }
 
 
-        private async Task<RecoverabilityContext> _handleControlMessage(Message serviceBusControlMessage, RecoverabilityContext context)
+        private async Task<RecoverabilityContext> _handleControlMessage(Microsoft.Azure.ServiceBus.Message serviceBusControlMessage, RecoverabilityContext context)
         {
             try
             {
@@ -91,7 +91,7 @@ namespace Eventfully.Transports.AzureServiceBus
             else //already deferred. complete the control message / we just sent a new one above
             {
                 await _completeImmediateRetryPolicy.ExecuteAsync(() =>
-                     context.Receiver.CompleteAsync(((Message)context.TempData["ControlMessage"]).SystemProperties.LockToken)
+                     context.Receiver.CompleteAsync(((Microsoft.Azure.ServiceBus.Message)context.TempData["ControlMessage"]).SystemProperties.LockToken)
                 );
 
                 //release the lock on the current deferred message
@@ -108,7 +108,7 @@ namespace Eventfully.Transports.AzureServiceBus
                 if (context.TempData.ContainsKey("ControlMessage"))
                 {
                     await _completeImmediateRetryPolicy.ExecuteAsync(() =>
-                        context.Receiver.CompleteAsync(((Message)context.TempData["ControlMessage"]).SystemProperties.LockToken)
+                        context.Receiver.CompleteAsync(((Microsoft.Azure.ServiceBus.Message)context.TempData["ControlMessage"]).SystemProperties.LockToken)
                     );
                 }
             }
@@ -118,7 +118,7 @@ namespace Eventfully.Transports.AzureServiceBus
             }
         }
 
-        public bool IsControlMessage(Message m)
+        public bool IsControlMessage(Microsoft.Azure.ServiceBus.Message m)
         {
             if (m != null && m.Label != null)
                 return m.Label.Equals(_controlMessageLabel, StringComparison.OrdinalIgnoreCase);
@@ -126,9 +126,9 @@ namespace Eventfully.Transports.AzureServiceBus
 
         }
 
-        private Message _createServiceBusMessage(RecoverabilityControlMessage controlMessage)
+        private Microsoft.Azure.ServiceBus.Message _createServiceBusMessage(RecoverabilityControlMessage controlMessage)
         {
-            return new Message(Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(controlMessage)))
+            return new Microsoft.Azure.ServiceBus.Message(Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(controlMessage)))
             {
                 Label = _controlMessageLabel,
             };

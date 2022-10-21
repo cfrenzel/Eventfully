@@ -7,7 +7,7 @@ namespace Eventfully.Transports.AzureServiceBus
 {
     public class AzureServiceBusMetaDataMapper
     {
-        public void ApplyMetaData(Message message, MessageMetaData meta, string messageTypeIdentifier)
+        public void ApplyMetaData(Microsoft.Azure.ServiceBus.Message message, MessageMetaData meta, string messageTypeIdentifier)
         {
             if (meta != null)
             {
@@ -34,7 +34,7 @@ namespace Eventfully.Transports.AzureServiceBus
             message.Label = messageTypeIdentifier;
         }
 
-        public MessageMetaData ExtractMetaData(Message message)
+        public MessageMetaData ExtractMetaData(Microsoft.Azure.ServiceBus.Message message)
         {
             MessageMetaData meta = new MessageMetaData();
 

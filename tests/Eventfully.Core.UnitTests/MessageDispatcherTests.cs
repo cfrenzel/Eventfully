@@ -36,7 +36,7 @@ namespace Eventfully.Core.UnitTests
         {
         }
 
-        public class TestMessage : IIntegrationEvent
+        public class TestMessage : IEvent
         {
             public string MessageType => "MessageDispatcher.Test";
             public Guid TestId { get; set;}
@@ -79,7 +79,7 @@ namespace Eventfully.Core.UnitTests
             var fakeStateMachine = A.Fake<ISaga<TestState, Guid>>(
                 x => x.Implements<IMachineMessageHandler<TestMessage>>()
             );
-            A.CallTo(() => ((ISaga)fakeStateMachine).FindKey(A<IIntegrationMessage>.Ignored, A<MessageMetaData>.Ignored))
+            A.CallTo(() => ((ISaga)fakeStateMachine).FindKey(A<IMessage>.Ignored, A<MessageMetaData>.Ignored))
              .Returns(Guid.NewGuid());
 
             var fakeSagaPersistence = A.Fake<ISagaPersistence<TestState, Guid>>();
@@ -127,7 +127,7 @@ namespace Eventfully.Core.UnitTests
             var fakeSaga = A.Fake<ISaga<TestState, Guid>>(
                 x => x.Implements<IMessageHandler<TestMessage>>()
             );
-            A.CallTo(() => ((ISaga)fakeSaga).FindKey(A<IIntegrationMessage>.Ignored, A<MessageMetaData>.Ignored))
+            A.CallTo(() => ((ISaga)fakeSaga).FindKey(A<IMessage>.Ignored, A<MessageMetaData>.Ignored))
              .Returns(Guid.NewGuid());
 
             var fakeSagaPersistence = A.Fake<ISagaPersistence<TestState, Guid>>();

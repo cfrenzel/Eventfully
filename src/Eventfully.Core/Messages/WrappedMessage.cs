@@ -15,7 +15,7 @@ namespace Eventfully
     /// This is useful for sending pre-serialized messages through the Outbound message
     /// pipeline
     /// </summary>
-    public class WrappedMessage : IIntegrationMessage, IsSerialized
+    public class WrappedMessage : IMessage, IsSerialized
     {
         public string MessageType { get; set; }
         public byte[] Message { get; set; }
@@ -28,13 +28,13 @@ namespace Eventfully
         }
     }
 
-    public class WrappedCommand : WrappedMessage, IIntegrationCommand {
+    public class WrappedCommand : WrappedMessage, ICommand {
         public WrappedCommand(string messageTypeIdenfifier, byte[] message) : base(messageTypeIdenfifier, message) { }
     }
-    public class WrappedEvent : WrappedMessage, IIntegrationEvent {
+    public class WrappedEvent : WrappedMessage, IEvent {
         public WrappedEvent(string messageTypeIdenfifier, byte[] message) : base(messageTypeIdenfifier, message) { }
     }
-    public class WrappedReply : WrappedMessage, IIntegrationReply {
+    public class WrappedReply : WrappedMessage, IReply {
         public WrappedReply(string messageTypeIdenfifier, byte[] message) : base(messageTypeIdenfifier, message) { }
     }
 }

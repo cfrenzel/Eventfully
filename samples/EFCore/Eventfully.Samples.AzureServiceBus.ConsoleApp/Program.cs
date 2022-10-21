@@ -5,6 +5,8 @@ using System.Text;
 using System.Reflection;
 using System.Threading.Tasks;
 using System.Collections.Generic;
+using System.Threading;
+using Azure.Messaging.ServiceBus;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
 using Microsoft.Extensions.Configuration;
@@ -12,7 +14,11 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using Eventfully;
+using Eventfully.Core.Analyzers.Test;
+using Eventfully.EFCoreOutbox;
 using Eventfully.Semaphore.SqlServer;
+using Eventfully.Transports;
+using Eventfully.Transports.AzureServiceBus2;
 
 namespace Eventfully.Samples.ConsoleApp
 {
@@ -23,20 +29,25 @@ namespace Eventfully.Samples.ConsoleApp
 
         public static async Task Main(string[] args)
         {
-            _init();
+            await _init();
             
-            await PublishOrderCreatedEvent();
-            await PublishOrderCreatedWithinTransactionWithOrderEntity();
-            await PublishOrderCreatedWithDelay();
-            await PublishOrderCreatedFromRawJson();
-            await PublishEncryptedPaymentMethodCreated();
-            await PublishEventWithFailingHandler();
-          
+            // create the sender
+            var client = new ServiceBusClient(_config.GetConnectionString("AzureServiceBus"), new ServiceBusClientOptions(){ });
+            ServiceBusSender sender = client.CreateSender("contracts.events/ordersubmitted");
+            ServiceBusMessage message = new ServiceBusMessage("Hello world!");
+            await sender.SendMessageAsync(message);
+            // await PublishOrderCreatedEvent();
+            // await PublishOrderCreatedWithinTransactionWithOrderEntity();
+            // await PublishOrderCreatedWithDelay();
+            // await PublishOrderCreatedFromRawJson();
+            // await PublishEncryptedPaymentMethodCreated();
+            // await PublishEventWithFailingHandler();
+            //
             Console.WriteLine("Press any key to exit...");
             Console.ReadLine();
         }
 
-        static void _init()
+        static async Task _init()
         {
             var builder = new ConfigurationBuilder()
                  .SetBasePath(Directory.GetCurrentDirectory())
@@ -58,27 +69,27 @@ namespace Eventfully.Samples.ConsoleApp
                    options.UseSqlServer(
                        _config.GetConnectionString("ApplicationConnection")
             ));
-
-            _services.AddMessaging(
-                new MessagingProfile(_config),
-                _config.GetSection("EndpointBindings").Get<EndpointBindings>(),
-                settings =>
+            
+            _services.AddMessaging(options =>
+            {
+                options.UseEFCore<ApplicationDbContext>(_config.GetConnectionString("ApplicationConnection"), cfg => { } );
+                options.UseAzureServiceBus(_config.GetConnectionString("AzureServiceBus"),
+                    cfg =>
+                    {
+                        ///TODO: specify a library/namespace/filter to look for messages, could implement interfaces or have a certain naming convention
+                        ///TODO: allow not passing in name and allow convention to name queue/topic 
+                        cfg.ConfigureTopic<PizzaOrderedEvent>("contracts.events/ordersubmitted", "test-sub");
+                    });
+            });
+                /*  settings =>
                 {
                     settings.OutboxConsumerSemaphore = new SqlServerSemaphore(_config.GetConnectionString("ApplicationConnection"), "dev.outbox.consumer", 30, 3);        
                 },
-                typeof(Program).GetTypeInfo().Assembly
-            )
-            .WithEFCoreOutbox<ApplicationDbContext>(settings =>
-             {
-                settings.DisableTransientDispatch = false;
-                settings.MaxConcurrency = 1;
-                settings.SqlConnectionString = _config.GetConnectionString("ApplicationConnection");
-             });
-
+                typeof(Program).GetTypeInfo().Assembly*/
+            
             _serviceProvider = _services.BuildServiceProvider();
 
-            //enable receiving messages from the configured endpoints
-            _serviceProvider.UseMessagingHost();
+            await _serviceProvider.GetService<ServiceBusManager>().StartAsync(CancellationToken.None);
         }
 
         static async Task PublishOrderCreatedEvent()

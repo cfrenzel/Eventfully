@@ -6,6 +6,6 @@ namespace Eventfully
 {
     public interface IMessageExtractor
     {
-        IIntegrationMessage Extract(byte[] data);
+        IMessage Extract(byte[] data);
     }
 }

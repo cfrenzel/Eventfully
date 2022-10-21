@@ -66,7 +66,7 @@ namespace Eventfully
         /// </summary>
         /// <typeparam name="T"></typeparam>
         /// <param name="handler"></param>
-        protected void Handle<T>(Func<T, MessageContext, Task> handler) where T : IIntegrationMessage
+        protected void Handle<T>(Func<T, MessageContext, Task> handler) where T : IMessage
         {
             this._currentHandlers.Add<T>(handler);
         }
@@ -93,7 +93,7 @@ namespace Eventfully
             return methodName;
         }
 
-        public Task Handle(IIntegrationMessage message, MessageContext context)
+        public Task Handle(IMessage message, MessageContext context)
         {
             var messageType = message.GetType();
             if (_currentHandlers == null)
@@ -106,7 +106,7 @@ namespace Eventfully
                 return handler.Invoke(message, context);
         }
 
-        protected virtual Task Unhandled(IIntegrationMessage message, MessageContext context)
+        protected virtual Task Unhandled(IMessage message, MessageContext context)
         {
             throw new InvalidMessageForStateException(_currentHandlers.StateName, message.GetType());
         }
@@ -130,7 +130,7 @@ namespace Eventfully
     {
         public readonly string StateName;
 
-        private readonly Dictionary<Type, Func<IIntegrationMessage, MessageContext, Task>> _handlers = new Dictionary<Type, Func<IIntegrationMessage, MessageContext, Task>>();
+        private readonly Dictionary<Type, Func<IMessage, MessageContext, Task>> _handlers = new Dictionary<Type, Func<IMessage, MessageContext, Task>>();
 
         public HandlerState(string stateName)
         {
@@ -138,7 +138,7 @@ namespace Eventfully
         }
 
         public void Add<T>(Func<T, MessageContext, Task> handler)
-            where T : IIntegrationMessage
+            where T : IMessage
         {
             if (handler == null)
                 throw new ArgumentNullException("Handler can not be null");
@@ -148,13 +148,13 @@ namespace Eventfully
 
             //wrap Action to convert from IIntegrationMessage back to the Type (T)
             _handlers.Add(type,
-                new Func<IIntegrationMessage, MessageContext, Task>((untyped, context) => {
+                new Func<IMessage, MessageContext, Task>((untyped, context) => {
                     var typed = (T)Convert.ChangeType(untyped, typeof(T));
                     return handler(typed, context);
                 }));
         }
 
-        public Func<IIntegrationMessage, MessageContext, Task> GetHandler(Type messageType)
+        public Func<IMessage, MessageContext, Task> GetHandler(Type messageType)
         {
             if (_handlers.ContainsKey(messageType))
                 return _handlers[messageType];
